@@ -1,0 +1,117 @@
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,700;1,400&family=Outfit:wght@400;700&display=swap');
+
+:root {
+  --bg-color: #050505;
+  --text-color: #ffffff;
+  --accent-gold: #ffc107;
+  --accent-cyan: #00f2ff;
+  --glass-bg: rgba(255, 255, 255, 0.05);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: 'Instrument Sans', sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  width: 100%;
+}
+
+/* Grainy Texture Overlay */
+.noise {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: url('https://grainy-gradients.vercel.app/noise.svg');
+  opacity: 0.05;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.hero-section {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+
+.canvas-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1;
+}
+
+.content-layer {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+}
+
+section {
+  min-height: 100vh;
+  padding: 5vw;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.title {
+  font-family: 'Outfit', sans-serif;
+  font-size: clamp(3rem, 8vw, 10rem);
+  text-transform: uppercase;
+  font-weight: 700;
+  line-height: 0.9;
+  letter-spacing: -0.05em;
+}
+
+.subtitle {
+  font-size: clamp(1rem, 2vw, 1.5rem);
+  max-width: 600px;
+  margin-top: 2rem;
+  opacity: 0.7;
+}
+
+.highlight {
+  color: var(--accent-gold);
+}
+
+.reveal-text div {
+  overflow: hidden;
+}
+
+/* Lenis CSS */
+html.lenis, html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+.lenis.lenis-smooth iframe {
+  pointer-events: none;
+}
