@@ -4,22 +4,22 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-# async runtime
-tokio = { version = "1.35", features = ["full"] }
-
-# solana interaction
-solana-client = "1.18"
-solana-sdk = "1.18"
-anchor-client = "0.30"
-anchor-lang = "0.30"
-
-# serialization
+tokio = { version = "1.36", features = ["full"] }
+solana-client = "1.18.26"
+solana-sdk = "1.18.26"
+solana-rpc-client-api = "1.18.26"
+anchor-lang = "0.30.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 base64 = "0.21"
-
-# utilities
 anyhow = "1.0"
-futures-util = "0.3"
-log = "0.4"
 env_logger = "0.10"
+log = "0.4"
+futures-util = "0.3"
+
+# BigInt Math for Day 3 (Bypass all version conflicts)
+num-bigint = { version = "0.4", features = ["rand"] }
+num-traits = "0.2"
+rand = "0.8"
+hex = "0.4"
+generic-array = "0.14"
