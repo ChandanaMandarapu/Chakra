@@ -16,10 +16,10 @@ anyhow = "1.0"
 env_logger = "0.10"
 log = "0.4"
 futures-util = "0.3"
-
-# BigInt Math for Day 3 (Bypass all version conflicts)
 num-bigint = { version = "0.4", features = ["rand"] }
 num-traits = "0.2"
 rand = "0.8"
 hex = "0.4"
 generic-array = "0.14"
+sha3 = "0.10"
+libsecp256k1 = "0.6.0"
