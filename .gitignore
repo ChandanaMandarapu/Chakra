@@ -1,0 +1,6 @@
+
+# CHAKRA ONCHAIN IGNORES
+chakra-onchain/lib/
+chakra-onchain/out/
+chakra-onchain/cache/
+chakra-onchain/broadcast/
