@@ -9,7 +9,7 @@ Technical Demo: https://youtu.be/hDFFVkvAfuM
 
 CHAKRA uses Distributed Key Generation (DKG) and 2-of-3 Threshold 
 Signature Schemes (TSS) to let Solana programs control native 
-accounts on Bitcoin, Ethereum, and Base—no bridges, no wrapped assets.
+accounts on Bitcoin, Ethereum, and Base—no bridges, no wrapped assets..
 
 ### Components
 - **CHAKRA Controller**: Anchor program on Solana
