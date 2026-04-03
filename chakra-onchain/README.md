@@ -1,66 +1,43 @@
-## Foundry
+# CHAKRA Mainframe: The Universal Command Layer
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+CHAKRA is a developer tooling protocol that turns Solana into a **Universal Mainframe** — allowing any Solana program to natively own and execute transactions on Bitcoin, Ethereum, and Base accounts without bridges or wrapped assets.
 
-Foundry consists of:
+This repository contains the **CHAKRA Controller**, the on-chain brain deployed on Solana.
 
-- **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
-- **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
-- **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
-- **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+## 🏗 System Architecture
 
-## Documentation
+```mermaid
+sequenceDiagram
+    participant User
+    participant Solana as CHAKRA Controller (Solana)
+    participant Sentinel as Sentinel Node Network
+    participant Target as Target Chain (Base/Bitcoin)
 
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
+    User->>Solana: initialize_intent(Target, Amount)
+    Note over Solana: Funds locked in Escrow PDA
+    Solana-->>Sentinel: emit ControlIntent Event
+    Sentinel->>Sentinel: 2-of-3 TSS Signing Ceremony
+    Sentinel->>Target: Execute Native Transaction
+    Target-->>Sentinel: Transaction Success
+    Sentinel->>Solana: submit_proof(ZK-Proof)
+    Note over Solana: Verify Proof & Release Escrow
+    Solana->>User: Action Finalized
 ```
 
-### Test
+## 🛠 Project Structure
 
-```shell
-$ forge test
-```
+- `programs/chakra-mainframe/src/instructions/`: Modular instruction handlers.
+- `programs/chakra-mainframe/src/state/`: Binary account structures (EscrowState).
+- `programs/chakra-mainframe/src/errors/`: Custom protocol error codes.
+- `programs/chakra-mainframe/src/events/`: Cross-chain intent emission logic.
 
-### Format
+## 🚀 Milestone 1 Status
 
-```shell
-$ forge fmt
-```
+- [x] **Modular Anchor Foundation**: Implemented with full security checks.
+- [x] **Secure Escrow**: Slot-based timeout and `cancel_intent` logic active.
+- [ ] **Sentinel Listener**: (In Progress)
+- [ ] **TSS Logic**: (Scheduled for Week 3)
 
-### Gas Snapshots
+## ⚖️ License
 
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+All code is released under the **MIT License**. Build the future of Solana natively.
