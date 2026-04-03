@@ -5,7 +5,8 @@ use solana_sdk::commitment_config::CommitmentConfig;
 use anchor_lang::prelude::*;
 
 const DEVNET_WSS: &str = "wss://api.devnet.solana.com";
-const PROGRAM_ID: &str = "EB51DpnWfwM91HHipvub1VCcz5bSrJ7cjNentHcvgRBM";
+// YOUR REAL PROGRAM ID
+const PROGRAM_ID: &str = "8C4teHPBFRMrpx4J1LNTHPj8jex6RPrQCHdZswJLbPPp";
 
 #[event]
 #[derive(Debug)]
@@ -14,16 +15,17 @@ pub struct ControlIntentEvent {
     pub target_chain_id: u32,
     pub amount: u64,
     pub target_address: [u8; 32],
-    pub timeout: i64,
+    pub escrow_pda: Pubkey,
+    pub timeout_slot: u64,
 }
 
 pub struct SentinelListener;
 
 impl SentinelListener {
     pub async fn start_listening() -> Result<()> {
-        println!("Sentinel monitoring program: {}", PROGRAM_ID);
+        println!("Sentinel monitoring CHAKRA program: {}", PROGRAM_ID);
         
-        let (mut _subscription, receiver) = PubsubClient::logs_subscribe(
+        let (_subscription, receiver) = PubsubClient::logs_subscribe(
             DEVNET_WSS,
             RpcTransactionLogsFilter::Mentions(vec![PROGRAM_ID.to_string()]),
             RpcTransactionLogsConfig {
@@ -33,8 +35,11 @@ impl SentinelListener {
 
         while let Ok(response) = receiver.recv() {
             for log in response.value.logs {
-                if let Err(e) = crate::processor::IntentProcessor::handle_log(&log) {
-                    eprintln!("Error processing log: {:?}", e);
+                // If a ControlIntent is detected, process it
+                if log.contains("ControlIntent") {
+                    if let Err(e) = crate::processor::IntentProcessor::handle_log(&log) {
+                        eprintln!("Error processing intent: {:?}", e);
+                    }
                 }
             }
         }
