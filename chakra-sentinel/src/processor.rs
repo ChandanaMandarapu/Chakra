@@ -9,7 +9,9 @@ pub struct IntentProcessor;
 
 impl IntentProcessor {
     pub fn handle_log(log: &str) -> Result<()> {
-        if !log.contains("Program log: Instruction: InitializeIntent") && !log.contains("Program data: ") {
+        if !log.contains("Program log: Instruction: InitializeIntent")
+            && !log.contains("Program data: ")
+        {
             return Ok(());
         }
 
@@ -22,27 +24,29 @@ impl IntentProcessor {
                 .map_err(|e| anyhow!("Failed to deserialize event: {:?}", e))?;
 
             println!("--- CHAKRA INTENT DETECTED ---");
-            println!("Target Chain: {}", event.target_chain_id);
+            println!("Target Chain: {}", event.target_chain);
             println!("Amount: {}", event.amount);
-            println!("Target: 0x{}", hex::encode(event.target_address));
-            
-            // --- THE BRIDGE START ---
+            println!("Target Address: {}", event.target_address);
+
             println!("Proceeding to generate TSS Signature...");
-            
-            // 1. Load local shard
+
             let shard_data = fs::read_to_string("shard.json")?;
             let shard: KeyShard = serde_json::from_str(&shard_data)?;
-            
-            // 2. Mock 2-of-3 threshold
+
             let shard2 = KeyShard {
                 index: 2,
-                value: "9a01875b4fd250af72a7b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2".to_string(),
+                value: "9a01875b4fd250af72a7b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+                    .to_string(),
             };
 
-            // 3. Sign for Base
-            let tx_data = format!("transfer:{}:base:{}", event.amount, hex::encode(event.target_address));
-            let signature = SignerService::tss_sign_transaction(vec![shard, shard2], tx_data.as_bytes())?;
-            
+            let tx_data = format!(
+                "transfer:{}:base:{}",
+                event.amount,
+                event.target_address
+            );
+            let signature =
+                SignerService::tss_sign_transaction(vec![shard, shard2], tx_data.as_bytes())?;
+
             println!("--- TSS SIGNATURE PRODUCED ---");
             println!("r: 0x{}", signature.r);
             println!("s: 0x{}", signature.s);
@@ -59,27 +63,29 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_simulation_miracle() {
-        // Create a perfect mock event
+    fn test_simulation() {
         let mock_event = ControlIntentEvent {
             owner: Pubkey::default(),
-            target_chain_id: 8453,
-            amount: 1000000000, // 1 SOL
-            target_address: [1u8; 32], 
-            timeout: 100,
+            amount: 1_000_000_000,
+            source_chain: "solana".to_string(),
+            target_chain: "base".to_string(),
+            target_address: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e".to_string(),
+            escrow_pda: Pubkey::default(),
+            timeout_slot: 100,
         };
 
-        // Anchor event data = 8 byte discriminator + Borsh serialized event
-        let mut data = vec![0u8; 8]; // placeholder for discriminator
+        let mut data = vec![0u8; 8];
         mock_event.serialize(&mut data).unwrap();
-        
+
         let encoded = general_purpose::STANDARD.encode(&data);
         let mock_log = format!("Program data: {}", encoded);
-        
-        let _ = fs::write("shard.json", r#"{"index": 1, "value": "7802875b4fd250af72a7b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"}"#);
+
+        let _ = fs::write(
+            "shard.json",
+            r#"{"index": 1, "value": "7802875b4fd250af72a7b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"}"#,
+        );
 
         let result = IntentProcessor::handle_log(&mock_log);
         assert!(result.is_ok(), "Simulation failed: {:?}", result.err());
-        println!("CHAKRA simulation is now flawless.");
     }
 }

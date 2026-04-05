@@ -5,13 +5,12 @@ use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
 use libsecp256k1::{SecretKey, Message, sign};
 
-// SECP256K1 Curve Order (n)
 const SECP256K1_ORDER: &str = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141";
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct KeyShard {
     pub index: i64,
-    pub value: String, // Hex encoded bigint
+    pub value: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -46,7 +45,10 @@ impl SignerService {
         Ok((format!("{:x}", secret), shards))
     }
 
-    pub fn tss_sign_transaction(shards: Vec<KeyShard>, message: &[u8]) -> anyhow::Result<EthereumSignature> {
+    pub fn tss_sign_transaction(
+        shards: Vec<KeyShard>,
+        message: &[u8],
+    ) -> anyhow::Result<EthereumSignature> {
         if shards.len() < 2 {
             return Err(anyhow::anyhow!("Threshold not met"));
         }
@@ -57,13 +59,16 @@ impl SignerService {
         let y1 = BigInt::parse_bytes(shards[0].value.as_bytes(), 16).unwrap();
         let y2 = BigInt::parse_bytes(shards[1].value.as_bytes(), 16).unwrap();
 
-        let delta1 = (&x2 - &x1).modpow(&(&order - BigInt::from(2)), &order);
+        // FIX: use modular subtraction to prevent negative values
+        let x2_minus_x1 = ((&x2 - &x1) % &order + &order) % &order;
+        let x1_minus_x2 = ((&x1 - &x2) % &order + &order) % &order;
+
+        let delta1 = x2_minus_x1.modpow(&(&order - BigInt::from(2u32)), &order);
         let l1 = (&x2 * &delta1) % &order;
-        let delta2 = (&x1 - &x2).modpow(&(&order - BigInt::from(2)), &order);
+        let delta2 = x1_minus_x2.modpow(&(&order - BigInt::from(2u32)), &order);
         let l2 = (&x1 * &delta2) % &order;
 
-        let mut secret_bi = ((&y1 * &l1) % &order + (&y2 * &l2) % &order) % &order;
-        if secret_bi < BigInt::zero() { secret_bi += &order; }
+        let secret_bi = ((&y1 * &l1) % &order + (&y2 * &l2) % &order) % &order;
 
         let secret_hex = format!("{:0>64x}", secret_bi);
         let secret_bytes = hex::decode(secret_hex)?;
@@ -77,7 +82,7 @@ impl SignerService {
         let message_obj = Message::parse_slice(&hash)?;
 
         let (signature, recovery_id) = sign(&message_obj, &secret_key);
-        
+
         let sig_serialized = signature.serialize();
         let r = hex::encode(&sig_serialized[0..32]);
         let s = hex::encode(&sig_serialized[32..64]);
@@ -94,14 +99,17 @@ mod tests {
     #[test]
     fn test_tss_signing_flow() {
         let (_master_secret, shards) = SignerService::generate_shards().unwrap();
-        let tx_data = b"transfer:1.0:base:0x742d35Cc6634C0532925a3b844Bc454e4438f44e";
+        let tx_data = b"transfer:1000000000:base:0x742d35Cc6634C0532925a3b844Bc454e4438f44e";
 
-        let signature = SignerService::tss_sign_transaction(vec![shards[0].clone(), shards[2].clone()], tx_data).unwrap();
+        let signature =
+            SignerService::tss_sign_transaction(vec![shards[0].clone(), shards[2].clone()], tx_data)
+                .unwrap();
 
         println!("r: 0x{}", signature.r);
         println!("s: 0x{}", signature.s);
         println!("v: {}", signature.v);
-        
+
         assert!(!signature.r.is_empty());
+        assert!(!signature.s.is_empty());
     }
 }
