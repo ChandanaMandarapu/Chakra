@@ -13,6 +13,6 @@ accounts on Bitcoin, Ethereum, and Base—no bridges, no wrapped assets..
 
 ### Components
 - **CHAKRA Controller**: Anchor program on Solana
-- **Sentinel Network**: Decentralized TSS nodes (8GB RAM consumer hardware)
+- **Sentinel Network**: Decentralized TSS nodes
 - **Atomic Escrow**: Time-locked with ZK-rollback guarantees
 - **Universal SDK**: Rust crate + TypeScript client
