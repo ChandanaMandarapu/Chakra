@@ -23,17 +23,29 @@ pub mod chakra_mainframe {
         target_address: String,
     ) -> Result<()> {
         handle_initialize_intent(
-            ctx, 
-            target_chain_id, 
-            amount, 
-            timeout_slots, 
-            source_chain, 
-            target_chain, 
-            target_address
+            ctx,
+            target_chain_id,
+            amount,
+            timeout_slots,
+            source_chain,
+            target_chain,
+            target_address,
         )
     }
 
     pub fn cancel_intent(ctx: Context<CancelIntent>) -> Result<()> {
         handle_cancel_intent(ctx)
+    }
+
+    /// Called by Sentinel Nodes after successful execution on target chain.
+    /// Accepts the TSS signature as proof and finalizes the escrow.
+    pub fn submit_proof(
+        ctx: Context<SubmitProof>,
+        tx_hash: String,
+        signature_r: String,
+        signature_s: String,
+        signature_v: u8,
+    ) -> Result<()> {
+        handle_submit_proof(ctx, tx_hash, signature_r, signature_s, signature_v)
     }
 }
