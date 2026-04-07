@@ -48,4 +48,12 @@ pub mod chakra_mainframe {
     ) -> Result<()> {
         handle_submit_proof(ctx, tx_hash, signature_r, signature_s, signature_v)
     }
+
+    pub fn add_sentinel(ctx: Context<ManageSentinel>, sentinel_pubkey: Pubkey) -> Result<()> {
+        handle_add_sentinel(ctx, sentinel_pubkey)
+    }
+
+    pub fn remove_sentinel(ctx: Context<ManageSentinel>, sentinel_pubkey: Pubkey) -> Result<()> {
+        handle_remove_sentinel(ctx, sentinel_pubkey)
+    }
 }
