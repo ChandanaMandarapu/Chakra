@@ -14,6 +14,8 @@ pub enum ChakraError {
     AlreadyCancelled,
     #[msg("User is not authorized to manage this intent.")]
     Unauthorized,
+    #[msg("The signer is not an authorized Sentinel node.")]
+    UnauthorizedSentinel,
     #[msg("Mathematical overflow or underflow occurred.")]
     MathError,
 }
