@@ -9,6 +9,13 @@ pub struct SubmitProof<'info> {
     pub sentinel: Signer<'info>,
 
     #[account(
+        seeds = [b"sentinel", sentinel.key().as_ref()],
+        bump = sentinel_auth.bump,
+        constraint = sentinel_auth.is_active @ ChakraError::UnauthorizedSentinel
+    )]
+    pub sentinel_auth: Account<'info, SentinelAccount>,
+
+    #[account(
         mut,
         seeds = [b"escrow", escrow_account.owner.as_ref(), 
                  &escrow_account.target_chain_id.to_le_bytes()],
