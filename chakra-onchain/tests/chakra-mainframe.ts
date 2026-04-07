@@ -76,25 +76,39 @@ describe("chakra-mainframe", () => {
       program.programId
     );
 
-    // Initialize
+    // 1. Initialize
     await program.methods
       .initializeIntent(
         TARGET_CHAIN_ID,
-        AMOUNT,
+        AMOUNT, 
         new anchor.BN(100),
-        Buffer.from("solana"),
-        Buffer.from("polygon"),
+        "solana",
+        "polygon",
         "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
       )
       .accounts({
         user: user.publicKey,
         escrowAccount: escrowPda,
         systemProgram: anchor.web3.SystemProgram.programId,
-      })
-      .signers([])
+      } as any)
       .rpc();
 
-    // Submit Proof
+    // 2. Authorize the Sentinel (Required for Phase 2)
+    const [sentinelAuth] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("sentinel"), user.publicKey.toBuffer()],
+      program.programId
+    );
+    
+    await program.methods
+      .addSentinel(user.publicKey)
+      .accounts({
+        admin: user.publicKey,
+        sentinelAccount: sentinelAuth,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      } as any)
+      .rpc();
+
+    // 3. Submit Proof (Successfully authorized)
     console.log("🛡️ Submitting Sentinel Proof...");
     await program.methods
       .submitProof(
@@ -105,9 +119,10 @@ describe("chakra-mainframe", () => {
       )
       .accounts({
         sentinel: user.publicKey,
+        sentinelAuth: sentinelAuth,
         escrowAccount: escrowPda,
-      })
-      .signers([])
+        systemProgram: anchor.web3.SystemProgram.programId,
+      } as any)
       .rpc();
 
     // Verify
