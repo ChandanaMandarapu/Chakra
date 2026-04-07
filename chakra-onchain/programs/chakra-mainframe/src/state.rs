@@ -18,3 +18,14 @@ pub struct EscrowState {
 impl EscrowState {
     pub const LEN: usize = 8 + 32 + 8 + 8 + 8 + 8 + 1 + 1 + 1 + (4 + 32) + (4 + 32) + (4 + 64);
 }
+
+#[account]
+pub struct SentinelAccount {
+    pub sentinel_pubkey: Pubkey,
+    pub is_active: bool,
+    pub bump: u8,
+}
+
+impl SentinelAccount {
+    pub const LEN: usize = 8 + 32 + 1 + 1;
+}
