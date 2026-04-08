@@ -21,7 +21,7 @@ pub struct SubmitProof<'info> {
                  &escrow_account.target_chain_id.to_le_bytes()],
         bump = escrow_account.bump,
     )]
-    pub escrow_account: Account<'info, EscrowState>,
+    pub escrow_account: Box<Account<'info, EscrowState>>,
 
     pub system_program: Program<'info, System>,
 }
@@ -29,9 +29,9 @@ pub struct SubmitProof<'info> {
 pub fn handle_submit_proof(
     ctx: Context<SubmitProof>,
     tx_hash: String,
-    signature_r: String,
-    signature_s: String,
-    signature_v: u8,
+    _signature_r: String,
+    _signature_s: String,
+    _signature_v: u8,
 ) -> Result<()> {
     let escrow = &mut ctx.accounts.escrow_account;
     let clock = Clock::get()?;
