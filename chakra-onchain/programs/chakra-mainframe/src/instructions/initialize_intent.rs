@@ -27,9 +27,9 @@ pub fn handle_initialize_intent(
     target_chain_id: u64,
     amount: u64,
     timeout_slots: u64,
-    source_chain: String,
-    target_chain: String,
-    target_address: String,
+    source_chain: [u8; 32],
+    target_chain: [u8; 32],
+    target_address: [u8; 64],
 ) -> Result<()> {
     let escrow_info = ctx.accounts.escrow_account.to_account_info();
     let escrow_key = ctx.accounts.escrow_account.key();
@@ -46,9 +46,9 @@ pub fn handle_initialize_intent(
     escrow.timeout_slot = clock.slot.checked_add(timeout_slots).ok_or(ChakraError::MathError)?;
     escrow.is_finalized = false;
     escrow.is_cancelled = false;
-    escrow.source_chain = source_chain.clone();
-    escrow.target_chain = target_chain.clone();
-    escrow.target_address = target_address.clone();
+    escrow.source_chain = source_chain;
+    escrow.target_chain = target_chain;
+    escrow.target_address = target_address;
     escrow.bump = ctx.bumps.escrow_account;
 
     let cpi_context = CpiContext::new(
