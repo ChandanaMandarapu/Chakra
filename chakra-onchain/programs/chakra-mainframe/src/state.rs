@@ -10,13 +10,13 @@ pub struct EscrowState {
     pub is_finalized: bool,
     pub is_cancelled: bool,
     pub bump: u8,
-    pub source_chain: String,
-    pub target_chain: String,
-    pub target_address: String,
+    pub source_chain: [u8; 32],
+    pub target_chain: [u8; 32],
+    pub target_address: [u8; 64],
 }
 
 impl EscrowState {
-    pub const LEN: usize = 8 + 32 + 8 + 8 + 8 + 8 + 1 + 1 + 1 + (4 + 32) + (4 + 32) + (4 + 64);
+    pub const LEN: usize = 8 + 32 + 8 + 8 + 8 + 8 + 1 + 1 + 1 + 32 + 32 + 64;
 }
 
 #[account]
