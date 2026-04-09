@@ -17,6 +17,12 @@ describe("chakra-mainframe", () => {
     }
   }
 
+  function stringToBytes(str: string, length: number): number[] {
+    const buffer = Buffer.alloc(length);
+    buffer.write(str);
+    return Array.from(buffer);
+  }
+
   it("locks funds in escrow and cancel after timeout", async () => {
     const user = provider.wallet;
     const TARGET_CHAIN_ID = new anchor.BN(8453);
@@ -32,15 +38,15 @@ describe("chakra-mainframe", () => {
       program.programId
     );
 
-    // Initialize Intent
+    // Initialize Intent (Using Fixed-Size Byte Arrays)
     await program.methods
       .initializeIntent(
         TARGET_CHAIN_ID,
         AMOUNT, 
         new anchor.BN(TIMEOUT_SLOTS),
-        "solana",
-        "base",
-        "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
+        stringToBytes("solana", 32),
+        stringToBytes("base", 32),
+        stringToBytes("0x742d35Cc6634C0532925a3b844Bc454e4438f44e", 64)
       )
       .accounts({
         user: user.publicKey,
@@ -95,9 +101,9 @@ describe("chakra-mainframe", () => {
         TARGET_CHAIN_ID,
         AMOUNT, 
         new anchor.BN(100),
-        "solana",
-        "polygon",
-        "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
+        stringToBytes("solana", 32),
+        stringToBytes("polygon", 32),
+        stringToBytes("0x742d35Cc6634C0532925a3b844Bc454e4438f44e", 64)
       )
       .accounts({
         user: user.publicKey,
@@ -124,9 +130,9 @@ describe("chakra-mainframe", () => {
     // 3. Submit Proof
     await program.methods
       .submitProof(
-        "0xabc123...",
-        "0x...",
-        "0x...",
+        stringToBytes("0xabc123...", 64),
+        stringToBytes("0x...", 32),
+        stringToBytes("0x...", 32),
         27
       )
       .accounts({
