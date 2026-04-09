@@ -28,9 +28,9 @@ pub struct SubmitProof<'info> {
 
 pub fn handle_submit_proof(
     ctx: Context<SubmitProof>,
-    tx_hash: String,
-    _signature_r: String,
-    _signature_s: String,
+    tx_hash: [u8; 64],
+    _signature_r: [u8; 32],
+    _signature_s: [u8; 32],
     _signature_v: u8,
 ) -> Result<()> {
     let escrow = &mut ctx.accounts.escrow_account;
@@ -40,7 +40,7 @@ pub fn handle_submit_proof(
     require!(!escrow.is_cancelled, ChakraError::AlreadyCancelled);
     require!(
         clock.slot <= escrow.timeout_slot,
-        ChakraError::TimeoutNotReached
+        ChakraError::TimeoutReached
     );
 
     escrow.is_finalized = true;
