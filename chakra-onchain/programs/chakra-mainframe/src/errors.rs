@@ -8,6 +8,8 @@ pub enum ChakraError {
     TimeoutTooLong,
     #[msg("The cross-chain intent has not timed out yet.")]
     TimeoutNotReached,
+    #[msg("The cross-chain intent has timed out and can no longer be finalized.")]
+    TimeoutReached,
     #[msg("This intent has already been finalized by a ZK-Proof.")]
     AlreadyFinalized,
     #[msg("This intent has already been cancelled.")]
