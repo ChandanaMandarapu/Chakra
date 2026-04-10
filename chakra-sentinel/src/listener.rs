@@ -12,9 +12,9 @@ const PROGRAM_ID: &str = "8C4teHPBFRMrpx4J1LNTHPj8jex6RPrQCHdZswJLbPPp";
 pub struct ControlIntentEvent {
     pub owner: Pubkey,
     pub amount: u64,
-    pub source_chain: String,
-    pub target_chain: String,
-    pub target_address: String,
+    pub source_chain: [u8; 32],
+    pub target_chain: [u8; 32],
+    pub target_address: [u8; 64],
     pub escrow_pda: Pubkey,
     pub timeout_slot: u64,
 }
