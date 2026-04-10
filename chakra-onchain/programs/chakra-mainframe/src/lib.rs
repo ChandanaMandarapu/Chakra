@@ -18,9 +18,9 @@ pub mod chakra_mainframe {
         target_chain_id: u64,
         amount: u64,
         timeout_slots: u64,
-        source_chain: String,
-        target_chain: String,
-        target_address: String,
+        source_chain: [u8; 32],
+        target_chain: [u8; 32],
+        target_address: [u8; 64],
     ) -> Result<()> {
         handle_initialize_intent(
             ctx,
@@ -41,9 +41,9 @@ pub mod chakra_mainframe {
     /// Accepts the TSS signature as proof and finalizes the escrow.
     pub fn submit_proof(
         ctx: Context<SubmitProof>,
-        tx_hash: String,
-        signature_r: String,
-        signature_s: String,
+        tx_hash: [u8; 64],
+        signature_r: [u8; 32],
+        signature_s: [u8; 32],
         signature_v: u8,
     ) -> Result<()> {
         handle_submit_proof(ctx, tx_hash, signature_r, signature_s, signature_v)
