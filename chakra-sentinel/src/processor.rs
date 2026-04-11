@@ -8,7 +8,7 @@ use std::fs;
 pub struct IntentProcessor;
 
 impl IntentProcessor {
-    pub fn handle_log(log: &str) -> Result<()> {
+    pub fn handle_log(log: &str, shard_path: &str) -> Result<()> {
         if !log.contains("Program log: Instruction: InitializeIntent")
             && !log.contains("Program data: ")
         {
@@ -24,26 +24,32 @@ impl IntentProcessor {
                 .map_err(|e| anyhow!("Failed to deserialize event: {:?}", e))?;
 
             println!("--- CHAKRA INTENT DETECTED ---");
-            println!("Target Chain: {}", event.target_chain);
+            println!("Target Chain: {}", String::from_utf8_lossy(&event.target_chain));
             println!("Amount: {}", event.amount);
-            println!("Target Address: {}", event.target_address);
+            println!("Target Address: {}", String::from_utf8_lossy(&event.target_address));
 
             println!("Proceeding to generate TSS Signature...");
-
-            let shard_data = fs::read_to_string("shard.json")?;
+            
+            // Loading the specific shard for this node
+            let shard_data = fs::read_to_string(shard_path)?;
             let shard: KeyShard = serde_json::from_str(&shard_data)?;
 
+            // FOR MILESTONE 1 DEMO: Simulating the second shard for local threshold proof
+            // In the full loop, this will be loaded from a peer message.
             let shard2 = KeyShard {
                 index: 2,
                 value: "9a01875b4fd250af72a7b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
                     .to_string(),
             };
 
+            // Using sanitized address string for signing template
+            let target_addr_str = String::from_utf8_lossy(&event.target_address);
             let tx_data = format!(
                 "transfer:{}:base:{}",
                 event.amount,
-                event.target_address
+                target_addr_str.trim_matches(char::from(0))
             );
+            
             let signature =
                 SignerService::tss_sign_transaction(vec![shard, shard2], tx_data.as_bytes())?;
 
@@ -64,12 +70,19 @@ mod tests {
 
     #[test]
     fn test_simulation() {
+        let mut source_chain = [0u8; 32];
+        source_chain[..6].copy_from_slice(b"solana");
+        let mut target_chain = [0u8; 32];
+        target_chain[..4].copy_from_slice(b"base");
+        let mut target_address = [0u8; 64];
+        target_address[..42].copy_from_slice(b"0x742d35Cc6634C0532925a3b844Bc454e4438f44e");
+
         let mock_event = ControlIntentEvent {
             owner: Pubkey::default(),
             amount: 1_000_000_000,
-            source_chain: "solana".to_string(),
-            target_chain: "base".to_string(),
-            target_address: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e".to_string(),
+            source_chain,
+            target_chain,
+            target_address,
             escrow_pda: Pubkey::default(),
             timeout_slot: 100,
         };
@@ -85,7 +98,7 @@ mod tests {
             r#"{"index": 1, "value": "7802875b4fd250af72a7b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"}"#,
         );
 
-        let result = IntentProcessor::handle_log(&mock_log);
+        let result = IntentProcessor::handle_log(&mock_log, "shard.json");
         assert!(result.is_ok(), "Simulation failed: {:?}", result.err());
     }
 }

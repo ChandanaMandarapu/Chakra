@@ -22,7 +22,7 @@ pub struct ControlIntentEvent {
 pub struct SentinelListener;
 
 impl SentinelListener {
-    pub async fn start_listening() -> Result<()> {
+    pub async fn start_listening(shard_path: String) -> Result<()> {
         println!("Sentinel monitoring CHAKRA program: {}", PROGRAM_ID);
 
         let (_subscription, receiver) = PubsubClient::logs_subscribe(
@@ -36,7 +36,7 @@ impl SentinelListener {
         while let Ok(response) = receiver.recv() {
             for log in response.value.logs {
                 if log.contains("ControlIntent") {
-                    if let Err(e) = crate::processor::IntentProcessor::handle_log(&log) {
+                    if let Err(e) = crate::processor::IntentProcessor::handle_log(&log, &shard_path) {
                         eprintln!("Error processing intent: {:?}", e);
                     }
                 }
