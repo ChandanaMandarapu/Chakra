@@ -7,7 +7,7 @@ pub mod instructions;
 
 use crate::instructions::*;
 
-declare_id!("8C4teHPBFRMrpx4J1LNTHPj8jex6RPrQCHdZswJLbPPp");
+declare_id!("2KAXwKLRTQeSTa21dsread1x7mtCVcNGwy4CUCodMxgx");
 
 #[program]
 pub mod chakra_mainframe {

@@ -5,7 +5,7 @@ use solana_sdk::commitment_config::CommitmentConfig;
 use anchor_lang::prelude::*;
 
 const DEVNET_WSS: &str = "wss://api.devnet.solana.com";
-const PROGRAM_ID: &str = "8C4teHPBFRMrpx4J1LNTHPj8jex6RPrQCHdZswJLbPPp";
+const PROGRAM_ID: &str = "2KAXwKLRTQeSTa21dsread1x7mtCVcNGwy4CUCodMxgx";
 
 #[event]
 #[derive(Debug)]
