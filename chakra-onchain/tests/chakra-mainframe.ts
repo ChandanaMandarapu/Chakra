@@ -25,7 +25,8 @@ describe("chakra-mainframe", () => {
 
   it("locks funds in escrow and cancel after timeout", async () => {
     const user = provider.wallet;
-    const TARGET_CHAIN_ID = new anchor.BN(8453);
+    const randomId = Math.floor(Math.random() * 100000);
+    const TARGET_CHAIN_ID = new anchor.BN(randomId);
     const AMOUNT = new anchor.BN(1_000_000);
     const TIMEOUT_SLOTS = 20;
 
@@ -83,7 +84,8 @@ describe("chakra-mainframe", () => {
 
   it("finalizes escrow after sentinel proof submission", async () => {
     const user = provider.wallet;
-    const TARGET_CHAIN_ID = new anchor.BN(137);
+    const randomId = Math.floor(Math.random() * 100000 + 1000);
+    const TARGET_CHAIN_ID = new anchor.BN(randomId);
     const AMOUNT = new anchor.BN(500_000);
 
     const [escrowPda] = anchor.web3.PublicKey.findProgramAddressSync(
