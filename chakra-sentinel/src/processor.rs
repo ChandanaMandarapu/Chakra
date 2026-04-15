@@ -5,10 +5,21 @@ use crate::listener::ControlIntentEvent;
 use crate::signer::{SignerService, KeyShard};
 use std::fs;
 
+use solana_client::rpc_client::RpcClient;
+use solana_sdk::{
+    instruction::{AccountMeta, Instruction},
+    signature::read_keypair_file,
+    signer::Signer,
+    transaction::Transaction,
+};
+
 pub struct IntentProcessor;
 
+const DEVNET_URL: &str = "https://api.devnet.solana.com";
+const PROGRAM_ID: &str = "2KAXwKLRTQeSTa21dsread1x7mtCVcNGwy4CUCodMxgx";
+
 impl IntentProcessor {
-    pub fn handle_log(log: &str, shard_path: &str) -> Result<()> {
+    pub fn handle_log(log: &str, shard_path: &str, wallet_path: &str) -> Result<()> {
         if !log.contains("Program log: Instruction: InitializeIntent")
             && !log.contains("Program data: ")
         {
@@ -27,6 +38,7 @@ impl IntentProcessor {
             println!("Target Chain: {}", String::from_utf8_lossy(&event.target_chain));
             println!("Amount: {}", event.amount);
             println!("Target Address: {}", String::from_utf8_lossy(&event.target_address));
+            println!("Escrow PDA: {}", event.escrow_pda);
 
             println!("Proceeding to generate TSS Signature...");
             
@@ -35,7 +47,6 @@ impl IntentProcessor {
             let shard: KeyShard = serde_json::from_str(&shard_data)?;
 
             // FOR MILESTONE 1 DEMO: Simulating the second shard for local threshold proof
-            // In the full loop, this will be loaded from a peer message.
             let shard2 = KeyShard {
                 index: 2,
                 value: "9a01875b4fd250af72a7b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
@@ -50,14 +61,63 @@ impl IntentProcessor {
                 target_addr_str.trim_matches(char::from(0))
             );
             
-            let signature =
+            let tss_signature =
                 SignerService::tss_sign_transaction(vec![shard, shard2], tx_data.as_bytes())?;
 
             println!("--- TSS SIGNATURE PRODUCED ---");
-            println!("r: 0x{}", signature.r);
-            println!("s: 0x{}", signature.s);
-            println!("v: {}", signature.v);
+            println!("r: 0x{}", tss_signature.r);
+            println!("s: 0x{}", tss_signature.s);
             println!("------------------------------");
+
+            // --- AUTONOMOUS ON-CHAIN SUBMISSION ---
+            println!("Submitting proof to Solana Devnet...");
+            
+            let rpc_client = RpcClient::new(DEVNET_URL);
+            let sentinel_signer = read_keypair_file(wallet_path)
+                .map_err(|e| anyhow!("Failed to read wallet file: {:?}", e))?;
+
+            // Discriminator for "submit_proof" (sha256("global:submit_proof")[0..8])
+            // Standard Anchor discriminator calculation
+            let mut discriminator = [0u8; 8];
+            discriminator.copy_from_slice(&[146, 89, 116, 5, 26, 128, 71, 155]);
+
+            // Prepare the instruction data
+            let mut instruction_data = Vec::with_capacity(8 + 64 + 32 + 32 + 1);
+            instruction_data.extend_from_slice(&discriminator);
+            
+            // For tx_hash, for now we use a zero fill or a mock. 
+            // In a real loop, this is extracted from the transaction that emitted the log.
+            let mock_tx_hash = [0u8; 64]; 
+            instruction_data.extend_from_slice(&mock_tx_hash);
+
+            let r_bytes = hex::decode(&tss_signature.r)?;
+            let s_bytes = hex::decode(&tss_signature.s)?;
+            instruction_data.extend_from_slice(&r_bytes);
+            instruction_data.extend_from_slice(&s_bytes);
+            instruction_data.push(tss_signature.v);
+
+            let submit_proof_ix = Instruction {
+                program_id: PROGRAM_ID.parse().unwrap(),
+                accounts: vec![
+                    AccountMeta::new(event.escrow_pda, false),
+                    AccountMeta::new_readonly(sentinel_signer.pubkey(), true),
+                    AccountMeta::new_readonly(solana_sdk::system_program::id(), false),
+                ],
+                data: instruction_data,
+            };
+
+            let recent_blockhash = rpc_client.get_latest_blockhash()?;
+            let transaction = Transaction::new_signed_with_payer(
+                &[submit_proof_ix],
+                Some(&sentinel_signer.pubkey()),
+                &[&sentinel_signer],
+                recent_blockhash,
+            );
+
+            match rpc_client.send_and_confirm_transaction(&transaction) {
+                Ok(sig) => println!(">>> SUCCESS: Intent finalized on Devnet. Tx: {}", sig),
+                Err(e) => eprintln!(">>> ERROR: Failed to submit proof: {:?}", e),
+            }
         }
 
         Ok(())
@@ -98,7 +158,7 @@ mod tests {
             r#"{"index": 1, "value": "7802875b4fd250af72a7b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"}"#,
         );
 
-        let result = IntentProcessor::handle_log(&mock_log, "shard.json");
+        let result = IntentProcessor::handle_log(&mock_log, "shard.json", "sentinel-keypair.json");
         assert!(result.is_ok(), "Simulation failed: {:?}", result.err());
     }
 }
