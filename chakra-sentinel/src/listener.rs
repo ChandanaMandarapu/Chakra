@@ -35,7 +35,7 @@ impl SentinelListener {
 
         while let Ok(response) = receiver.recv() {
             for log in response.value.logs {
-                if log.contains("ControlIntent") {
+                if log.contains("Program data:") || log.contains("Instruction:") {
                     if let Err(e) = crate::processor::IntentProcessor::handle_log(&log, &shard_path, &wallet_path) {
                         eprintln!("Error processing intent: {:?}", e);
                     }
