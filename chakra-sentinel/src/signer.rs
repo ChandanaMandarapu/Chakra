@@ -1,5 +1,5 @@
 use num_bigint::{BigInt, RandBigInt};
-use num_traits::{One, Zero};
+use num_traits::One;
 use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
