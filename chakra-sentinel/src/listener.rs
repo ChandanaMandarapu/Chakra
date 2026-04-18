@@ -34,9 +34,10 @@ impl SentinelListener {
         ).map_err(|e| anyhow::anyhow!("Failed to subscribe: {:?}", e))?;
 
         while let Ok(response) = receiver.recv() {
+            let signature = response.value.signature.clone();
             for log in response.value.logs {
                 if log.contains("Program data:") || log.contains("Instruction:") {
-                    if let Err(e) = crate::processor::IntentProcessor::handle_log(&log, &shard_path, &wallet_path) {
+                    if let Err(e) = crate::processor::IntentProcessor::handle_log(&log, &signature, &shard_path, &wallet_path) {
                         eprintln!("Error processing intent: {:?}", e);
                     }
                 }
