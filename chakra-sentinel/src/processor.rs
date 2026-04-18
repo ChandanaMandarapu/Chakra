@@ -19,7 +19,7 @@ const DEVNET_URL: &str = "https://api.devnet.solana.com";
 const PROGRAM_ID: &str = "2KAXwKLRTQeSTa21dsread1x7mtCVcNGwy4CUCodMxgx";
 
 impl IntentProcessor {
-    pub fn handle_log(log: &str, shard_path: &str, wallet_path: &str) -> Result<()> {
+    pub fn handle_log(log: &str, tx_signature: &str, shard_path: &str, wallet_path: &str) -> Result<()> {
         if !log.contains("Program log: Instruction: InitializeIntent")
             && !log.contains("Program data: ")
         {
@@ -85,10 +85,14 @@ impl IntentProcessor {
             let mut instruction_data = Vec::with_capacity(8 + 64 + 32 + 32 + 1);
             instruction_data.extend_from_slice(&discriminator);
             
-            // For tx_hash, for now we use a zero fill or a mock. 
-            // In a real loop, this is extracted from the transaction that emitted the log.
-            let mock_tx_hash = [0u8; 64]; 
-            instruction_data.extend_from_slice(&mock_tx_hash);
+            // Decoding the live transaction signature from Base58
+            let sig_bytes = bs58::decode(tx_signature).into_vec()
+                .map_err(|e| anyhow!("Failed to decode signature: {:?}", e))?;
+            
+            // Ensure we have exactly 64 bytes (Solana Ed25519 signature length)
+            let mut tx_hash = [0u8; 64];
+            tx_hash.copy_from_slice(&sig_bytes);
+            instruction_data.extend_from_slice(&tx_hash);
 
             let r_bytes = hex::decode(&tss_signature.r)?;
             let s_bytes = hex::decode(&tss_signature.s)?;
@@ -158,7 +162,8 @@ mod tests {
             r#"{"index": 1, "value": "7802875b4fd250af72a7b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"}"#,
         );
 
-        let result = IntentProcessor::handle_log(&mock_log, "shard.json", "sentinel-keypair.json");
+        let mock_sig = "5VhWPPBUYNoEuVAKXCpFZn4d3QRkfeGzfwyeYvf85R3rTDV4EnHCWTkcM1QJMhtCFDCxr5HHhTPPtoNgPcf884Rk";
+        let result = IntentProcessor::handle_log(&mock_log, mock_sig, "shard.json", "sentinel-keypair.json");
         assert!(result.is_ok(), "Simulation failed: {:?}", result.err());
     }
 }
