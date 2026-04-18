@@ -3,6 +3,8 @@ name = "chakra-sentinel"
 version = "0.1.0"
 edition = "2021"
 
+[workspace]
+
 [dependencies]
 tokio = { version = "1.36", features = ["full"] }
 solana-client = "1.18.26"
@@ -20,6 +22,7 @@ num-bigint = { version = "0.4", features = ["rand"] }
 num-traits = "0.2"
 rand = "0.8"
 hex = "0.4"
+bs58 = "0.4"
 generic-array = "0.14"
 sha3 = "0.10"
 libsecp256k1 = "0.6.0"
