@@ -3,7 +3,10 @@ use anchor_lang::prelude::*;
 use base64::{Engine as _, engine::general_purpose};
 use crate::listener::ControlIntentEvent;
 use crate::signer::{SignerService, KeyShard};
+use crate::state::EscrowState;
 use std::fs;
+use std::str::FromStr;
+use solana_sdk::pubkey::Pubkey;
 
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::{
@@ -20,9 +23,7 @@ const PROGRAM_ID: &str = "2KAXwKLRTQeSTa21dsread1x7mtCVcNGwy4CUCodMxgx";
 
 impl IntentProcessor {
     pub fn handle_log(log: &str, tx_signature: &str, shard_path: &str, wallet_path: &str) -> Result<()> {
-        if !log.contains("Program log: Instruction: InitializeIntent")
-            && !log.contains("Program data: ")
-        {
+        if !log.contains("Program data: ") {
             return Ok(());
         }
 
@@ -30,12 +31,23 @@ impl IntentProcessor {
             let encoded_data = &log[data_start + 14..];
             let decoded_data = general_purpose::STANDARD.decode(encoded_data.trim())?;
 
+            if decoded_data.len() < 8 {
+                return Ok(());
+            }
+
+            // Anchor Event Discriminator for "event:ControlIntent"
+            let discriminator = [212, 133, 69, 18, 168, 251, 168, 134];
+            if decoded_data[0..8] != discriminator {
+                return Ok(());
+            }
+
             let mut data_ptr = &decoded_data[8..];
             let event = ControlIntentEvent::deserialize(&mut data_ptr)
                 .map_err(|e| anyhow!("Failed to deserialize event: {:?}", e))?;
 
             println!("--- CHAKRA INTENT DETECTED ---");
-            println!("Target Chain: {}", String::from_utf8_lossy(&event.target_chain));
+            println!("Target Chain ID: {}", event.target_chain_id);
+            println!("Nonce: {}", event.nonce);
             println!("Amount: {}", event.amount);
             println!("Target Address: {}", String::from_utf8_lossy(&event.target_address));
             println!("Escrow PDA: {}", event.escrow_pda);
@@ -53,16 +65,17 @@ impl IntentProcessor {
                     .to_string(),
             };
 
-            // Using sanitized address string for signing template
-            let target_addr_str = String::from_utf8_lossy(&event.target_address);
-            let tx_data = format!(
-                "transfer:{}:base:{}",
-                event.amount,
-                target_addr_str.trim_matches(char::from(0))
-            );
+            // BINARY SIGNING PAYLOAD (Matches on-chain reconstruction)
+            // Standardizing on Big Endian for cross-chain compatibility
+            // Format: [target_chain_id (8), nonce (8), amount (8), target_address (64)]
+            let mut msg_data = Vec::with_capacity(8 + 8 + 8 + 64);
+            msg_data.extend_from_slice(&event.target_chain_id.to_be_bytes());
+            msg_data.extend_from_slice(&event.nonce.to_be_bytes());
+            msg_data.extend_from_slice(&event.amount.to_be_bytes());
+            msg_data.extend_from_slice(&event.target_address);
             
             let tss_signature =
-                SignerService::tss_sign_transaction(vec![shard, shard2], tx_data.as_bytes())?;
+                SignerService::tss_sign_transaction(vec![shard, shard2], &msg_data)?;
 
             println!("--- TSS SIGNATURE PRODUCED ---");
             println!("r: 0x{}", tss_signature.r);
@@ -70,14 +83,37 @@ impl IntentProcessor {
             println!("------------------------------");
 
             // --- AUTONOMOUS ON-CHAIN SUBMISSION ---
-            println!("Submitting proof to Solana Devnet...");
+            println!("Submitting proof to Solana...");
             
             let rpc_client = RpcClient::new(DEVNET_URL);
             let sentinel_signer = read_keypair_file(wallet_path)
                 .map_err(|e| anyhow!("Failed to read wallet file: {:?}", e))?;
 
+            // Fetching the PDAs required for the submission
+            let (sentinel_auth_pda, _) = Pubkey::find_program_address(
+                &[b"sentinel", sentinel_signer.pubkey().as_ref()],
+                &PROGRAM_ID.parse().unwrap(),
+            );
+            let (tss_config_pda, _) = Pubkey::find_program_address(
+                &[b"tss_config"],
+                &PROGRAM_ID.parse().unwrap(),
+            );
+
+            // --- IDEMPOTENCY CHECK ---
+            // Verify if intent is already finalized or cancelled before wasting gas
+            let escrow_data = rpc_client.get_account(&event.escrow_pda)
+                .map_err(|e| anyhow!("Failed to fetch escrow data: {:?}", e))?;
+            
+            let mut data_slice = &escrow_data.data[8..]; // Skip discriminator
+            let current_escrow = EscrowState::deserialize(&mut data_slice)
+                .map_err(|e| anyhow!("Failed to deserialize escrow: {:?}", e))?;
+
+            if current_escrow.is_finalized || current_escrow.is_cancelled {
+                println!(">>> Intent {} already resolved. Skipping submission.", event.escrow_pda);
+                return Ok(());
+            }
+
             // Discriminator for "submit_proof" (sha256("global:submit_proof")[0..8])
-            // Standard Anchor discriminator calculation
             let mut discriminator = [0u8; 8];
             discriminator.copy_from_slice(&[146, 89, 116, 5, 26, 128, 71, 155]);
 
@@ -85,11 +121,9 @@ impl IntentProcessor {
             let mut instruction_data = Vec::with_capacity(8 + 64 + 32 + 32 + 1);
             instruction_data.extend_from_slice(&discriminator);
             
-            // Decoding the live transaction signature from Base58
             let sig_bytes = bs58::decode(tx_signature).into_vec()
                 .map_err(|e| anyhow!("Failed to decode signature: {:?}", e))?;
             
-            // Ensure we have exactly 64 bytes (Solana Ed25519 signature length)
             let mut tx_hash = [0u8; 64];
             tx_hash.copy_from_slice(&sig_bytes);
             instruction_data.extend_from_slice(&tx_hash);
@@ -103,8 +137,10 @@ impl IntentProcessor {
             let submit_proof_ix = Instruction {
                 program_id: PROGRAM_ID.parse().unwrap(),
                 accounts: vec![
+                    AccountMeta::new(sentinel_signer.pubkey(), true),
+                    AccountMeta::new_readonly(sentinel_auth_pda, false),
                     AccountMeta::new(event.escrow_pda, false),
-                    AccountMeta::new_readonly(sentinel_signer.pubkey(), true),
+                    AccountMeta::new_readonly(tss_config_pda, false),
                     AccountMeta::new_readonly(solana_sdk::system_program::id(), false),
                 ],
                 data: instruction_data,
@@ -125,6 +161,15 @@ impl IntentProcessor {
         }
 
         Ok(())
+    #[test]
+    fn test_print_event_discriminator() {
+        use sha2::{Sha256, Digest};
+        let mut hasher = Sha256::new();
+        hasher.update(b"event:ControlIntent");
+        let result = hasher.finalize();
+        let expected = [212, 133, 69, 18, 168, 251, 168, 134];
+        println!("Discriminator: {:?}", &result[..8]);
+        assert_eq!(&result[..8], &expected, "Discriminator mismatch!");
     }
 }
 
@@ -143,6 +188,8 @@ mod tests {
 
         let mock_event = ControlIntentEvent {
             owner: Pubkey::default(),
+            target_chain_id: 1,
+            nonce: 0,
             amount: 1_000_000_000,
             source_chain,
             target_chain,
