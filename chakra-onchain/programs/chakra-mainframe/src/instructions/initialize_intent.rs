@@ -5,7 +5,7 @@ use crate::errors::*;
 use crate::events::*;
 
 #[derive(Accounts)]
-#[instruction(target_chain_id: u64)]
+#[instruction(target_chain_id: u64, nonce: u64)]
 pub struct InitializeIntent<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
@@ -14,7 +14,7 @@ pub struct InitializeIntent<'info> {
         init,
         payer = user,
         space = EscrowState::LEN,
-        seeds = [b"escrow", user.key().as_ref(), &target_chain_id.to_le_bytes()],
+        seeds = [b"escrow", user.key().as_ref(), &target_chain_id.to_le_bytes(), &nonce.to_le_bytes()],
         bump
     )]
     pub escrow_account: Account<'info, EscrowState>,
@@ -25,6 +25,7 @@ pub struct InitializeIntent<'info> {
 pub fn handle_initialize_intent(
     ctx: Context<InitializeIntent>,
     target_chain_id: u64,
+    nonce: u64,
     amount: u64,
     timeout_slots: u64,
     source_chain: [u8; 32],
@@ -37,10 +38,12 @@ pub fn handle_initialize_intent(
 
     let escrow = &mut ctx.accounts.escrow_account;
     
-    require!(timeout_slots > 10, ChakraError::TimeoutTooShort);
+    require!(timeout_slots >= 150, ChakraError::TimeoutTooShort);
+    require!(timeout_slots <= 216000, ChakraError::TimeoutTooLong);
     
     escrow.owner = ctx.accounts.user.key();
     escrow.target_chain_id = target_chain_id;
+    escrow.nonce = nonce;
     escrow.amount = amount;
     escrow.start_slot = clock.slot;
     escrow.timeout_slot = clock.slot.checked_add(timeout_slots).ok_or(ChakraError::MathError)?;
@@ -62,6 +65,7 @@ pub fn handle_initialize_intent(
 
     emit!(ControlIntent {
         owner: ctx.accounts.user.key(),
+        nonce,
         amount,
         source_chain,
         target_chain,
