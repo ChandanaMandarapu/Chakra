@@ -2,6 +2,38 @@ use anchor_lang::prelude::*;
 use crate::state::*;
 
 #[derive(Accounts)]
+pub struct InitializeTssConfig<'info> {
+    #[account(mut)]
+    pub admin: Signer<'info>,
+
+    #[account(
+        init,
+        payer = admin,
+        space = TssConfig::LEN,
+        seeds = [b"tss_config"],
+        bump
+    )]
+    pub tss_config: Account<'info, TssConfig>,
+
+    pub system_program: Program<'info, System>,
+}
+
+pub fn handle_initialize_tss_config(
+    ctx: Context<InitializeTssConfig>,
+    tss_pubkey: [u8; 64],
+    threshold: u8,
+    total_nodes: u8,
+) -> Result<()> {
+    let tss_config = &mut ctx.accounts.tss_config;
+    tss_config.tss_pubkey = tss_pubkey;
+    tss_config.threshold = threshold;
+    tss_config.total_nodes = total_nodes;
+    tss_config.admin = ctx.accounts.admin.key();
+    tss_config.bump = ctx.bumps.tss_config;
+    Ok(())
+}
+
+#[derive(Accounts)]
 #[instruction(sentinel_pubkey: Pubkey)]
 pub struct ManageSentinel<'info> {
     #[account(mut)]
