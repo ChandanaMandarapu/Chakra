@@ -3,6 +3,8 @@ use anchor_lang::prelude::*;
 #[event]
 pub struct ControlIntent {
     pub owner: Pubkey,
+    pub target_chain_id: u64,
+    pub nonce: u64,
     pub amount: u64,
     pub source_chain: [u8; 32],
     pub target_chain: [u8; 32],
