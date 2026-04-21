@@ -1,9 +1,23 @@
 use anchor_lang::prelude::*;
 
 #[account]
+pub struct TssConfig {
+    pub tss_pubkey: [u8; 64],
+    pub threshold: u8,
+    pub total_nodes: u8,
+    pub admin: Pubkey,
+    pub bump: u8,
+}
+
+impl TssConfig {
+    pub const LEN: usize = 8 + 64 + 1 + 1 + 32 + 1;
+}
+
+#[account]
 pub struct EscrowState {
     pub owner: Pubkey,
     pub target_chain_id: u64,
+    pub nonce: u64,
     pub amount: u64,
     pub start_slot: u64,
     pub timeout_slot: u64,
@@ -16,7 +30,7 @@ pub struct EscrowState {
 }
 
 impl EscrowState {
-    pub const LEN: usize = 8 + 32 + 8 + 8 + 8 + 8 + 1 + 1 + 1 + 32 + 32 + 64;
+    pub const LEN: usize = 8 + 32 + 8 + 8 + 8 + 8 + 8 + 1 + 1 + 1 + 32 + 32 + 64;
 }
 
 #[account]
