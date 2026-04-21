@@ -9,7 +9,9 @@ pub struct CancelIntent<'info> {
 
     #[account(
         mut,
-        seeds = [b"escrow", owner.key().as_ref(), &escrow_account.target_chain_id.to_le_bytes()],
+        seeds = [b"escrow", owner.key().as_ref(), 
+                 &escrow_account.target_chain_id.to_le_bytes(),
+                 &escrow_account.nonce.to_le_bytes()],
         bump = escrow_account.bump,
         has_one = owner @ ChakraError::Unauthorized,
         close = owner
