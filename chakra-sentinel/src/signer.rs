@@ -1,3 +1,15 @@
+/// CHAKRA SENTINEL SIGNER — HONEST STATUS (April 2026)
+/// 
+/// SECURITY MODEL:
+/// Currently, this signer uses a threshold key reconstruction approach for Proof-of-Concept.
+/// While functionally decentralized, the private key is temporarily reconstructed in memory
+/// during the 'tss_sign_transaction' call. 
+///
+/// ROADMAP TO BEAST MODE:
+/// The primary deliverable for Milestone 2 is the migration to true MPC-ECDSA (FROST).
+/// This will ensure that no single node ever holds the complete private key, even during
+/// the signing ceremony, moving CHAKRA to a zero-trust architecture.
+
 use num_bigint::{BigInt, RandBigInt};
 use num_traits::One;
 use rand::thread_rng;
