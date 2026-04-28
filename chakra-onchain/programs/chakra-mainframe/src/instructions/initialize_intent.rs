@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_lang::system_program::{Transfer, transfer};
+use anchor_lang::system_program::{transfer, Transfer};
 use crate::state::*;
 use crate::errors::*;
 use crate::events::*;
@@ -37,16 +37,20 @@ pub fn handle_initialize_intent(
     let clock = Clock::get()?;
 
     let escrow = &mut ctx.accounts.escrow_account;
-    
+
+    require!(amount > 0, ChakraError::MathError);
     require!(timeout_slots >= 150, ChakraError::TimeoutTooShort);
     require!(timeout_slots <= 216000, ChakraError::TimeoutTooLong);
-    
+
     escrow.owner = ctx.accounts.user.key();
     escrow.target_chain_id = target_chain_id;
     escrow.nonce = nonce;
     escrow.amount = amount;
     escrow.start_slot = clock.slot;
-    escrow.timeout_slot = clock.slot.checked_add(timeout_slots).ok_or(ChakraError::MathError)?;
+    escrow.timeout_slot = clock
+        .slot
+        .checked_add(timeout_slots)
+        .ok_or(ChakraError::MathError)?;
     escrow.is_finalized = false;
     escrow.is_cancelled = false;
     escrow.source_chain = source_chain;
@@ -61,6 +65,7 @@ pub fn handle_initialize_intent(
             to: escrow_info,
         },
     );
+
     transfer(cpi_context, amount)?;
 
     emit!(ControlIntent {
