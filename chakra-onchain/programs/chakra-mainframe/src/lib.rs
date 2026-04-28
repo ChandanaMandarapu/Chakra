@@ -22,6 +22,13 @@ pub mod chakra_mainframe {
         handle_initialize_tss_config(ctx, tss_pubkey, threshold, total_nodes)
     }
 
+    pub fn initialize_config(
+        ctx: Context<InitializeConfig>,
+        treasury: Pubkey,
+    ) -> Result<()> {
+        handle_initialize_config(ctx, treasury)
+    }
+
     pub fn initialize_intent(
         ctx: Context<InitializeIntent>,
         target_chain_id: u64,
@@ -48,8 +55,6 @@ pub mod chakra_mainframe {
         handle_cancel_intent(ctx)
     }
 
-    /// Called by Sentinel Nodes after successful execution on target chain.
-    /// Accepts the TSS signature as proof and finalizes the escrow.
     pub fn submit_proof(
         ctx: Context<SubmitProof>,
         tx_hash: [u8; 64],
@@ -60,11 +65,17 @@ pub mod chakra_mainframe {
         handle_submit_proof(ctx, tx_hash, signature_r, signature_s, signature_v)
     }
 
-    pub fn add_sentinel(ctx: Context<ManageSentinel>, sentinel_pubkey: Pubkey) -> Result<()> {
+    pub fn add_sentinel(
+        ctx: Context<ManageSentinel>,
+        sentinel_pubkey: Pubkey,
+    ) -> Result<()> {
         handle_add_sentinel(ctx, sentinel_pubkey)
     }
 
-    pub fn remove_sentinel(ctx: Context<ManageSentinel>, sentinel_pubkey: Pubkey) -> Result<()> {
+    pub fn remove_sentinel(
+        ctx: Context<ManageSentinel>,
+        sentinel_pubkey: Pubkey,
+    ) -> Result<()> {
         handle_remove_sentinel(ctx, sentinel_pubkey)
     }
 }

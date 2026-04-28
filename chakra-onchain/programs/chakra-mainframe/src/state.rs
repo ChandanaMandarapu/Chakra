@@ -34,6 +34,18 @@ impl EscrowState {
 }
 
 #[account]
+pub struct GlobalConfig {
+    pub admin: Pubkey,
+    pub treasury: Pubkey,
+    pub is_initialized: bool,
+    pub bump: u8,
+}
+
+impl GlobalConfig {
+    pub const LEN: usize = 8 + 32 + 32 + 1 + 1;
+}
+
+#[account]
 pub struct SentinelAccount {
     pub sentinel_pubkey: Pubkey,
     pub is_active: bool,
