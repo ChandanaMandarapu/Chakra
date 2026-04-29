@@ -3,9 +3,8 @@ use anchor_lang::prelude::*;
 use base64::{Engine as _, engine::general_purpose};
 use crate::listener::ControlIntentEvent;
 use crate::signer::{SignerService, KeyShard};
-use crate::state::EscrowState;
+use crate::state::{EscrowState, GlobalConfig};
 use std::fs;
-use std::str::FromStr;
 use solana_sdk::pubkey::Pubkey;
 
 use solana_client::rpc_client::RpcClient;
@@ -66,8 +65,6 @@ impl IntentProcessor {
             };
 
             // BINARY SIGNING PAYLOAD (Matches on-chain reconstruction)
-            // Standardizing on Big Endian for cross-chain compatibility
-            // Format: [target_chain_id (8), nonce (8), amount (8), target_address (64)]
             let mut msg_data = Vec::with_capacity(8 + 8 + 8 + 64);
             msg_data.extend_from_slice(&event.target_chain_id.to_be_bytes());
             msg_data.extend_from_slice(&event.nonce.to_be_bytes());
@@ -94,13 +91,19 @@ impl IntentProcessor {
                 &[b"sentinel", sentinel_signer.pubkey().as_ref()],
                 &PROGRAM_ID.parse().unwrap(),
             );
-            let (tss_config_pda, _) = Pubkey::find_program_address(
-                &[b"tss_config"],
+            let (global_config_pda, _) = Pubkey::find_program_address(
+                &[b"config"],
                 &PROGRAM_ID.parse().unwrap(),
             );
 
+            // Fetch GlobalConfig to get Treasury address
+            let config_data = rpc_client.get_account(&global_config_pda)
+                .map_err(|e| anyhow!("Failed to fetch global config: {:?}", e))?;
+            let mut config_slice = &config_data.data[8..];
+            let global_config = GlobalConfig::deserialize(&mut config_slice)
+                .map_err(|e| anyhow!("Failed to deserialize global config: {:?}", e))?;
+
             // --- IDEMPOTENCY CHECK ---
-            // Verify if intent is already finalized or cancelled before wasting gas
             let escrow_data = rpc_client.get_account(&event.escrow_pda)
                 .map_err(|e| anyhow!("Failed to fetch escrow data: {:?}", e))?;
             
@@ -113,7 +116,7 @@ impl IntentProcessor {
                 return Ok(());
             }
 
-            // Discriminator for "submit_proof" (sha256("global:submit_proof")[0..8])
+            // Discriminator for "submit_proof"
             let mut discriminator = [0u8; 8];
             discriminator.copy_from_slice(&[146, 89, 116, 5, 26, 128, 71, 155]);
 
@@ -139,8 +142,9 @@ impl IntentProcessor {
                 accounts: vec![
                     AccountMeta::new(sentinel_signer.pubkey(), true),
                     AccountMeta::new_readonly(sentinel_auth_pda, false),
+                    AccountMeta::new_readonly(global_config_pda, false),
                     AccountMeta::new(event.escrow_pda, false),
-                    AccountMeta::new_readonly(tss_config_pda, false),
+                    AccountMeta::new(global_config.treasury, false),
                     AccountMeta::new_readonly(solana_sdk::system_program::id(), false),
                 ],
                 data: instruction_data,
@@ -161,6 +165,13 @@ impl IntentProcessor {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
     #[test]
     fn test_print_event_discriminator() {
         use sha2::{Sha256, Digest};
@@ -171,11 +182,6 @@ impl IntentProcessor {
         println!("Discriminator: {:?}", &result[..8]);
         assert_eq!(&result[..8], &expected, "Discriminator mismatch!");
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
 
     #[test]
     fn test_simulation() {
