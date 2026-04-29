@@ -7,8 +7,25 @@ async fn main() -> Result<()> {
     env_logger::init();
 
     let args: Vec<String> = std::env::args().collect();
+    
+    if args.len() > 1 && args[1] == "keygen" {
+        println!("--- CHAKRA MASTER KEY GENERATION ---");
+        let (master_secret, shards) = chakra_sentinel::signer::SignerService::generate_shards()?;
+        println!(">>> MASTER SECRET (KEEP THIS SAFE!!): {}", master_secret);
+        
+        for (i, shard) in shards.iter().enumerate() {
+            let filename = format!("shard_{}.json", i + 1);
+            let data = serde_json::to_string_pretty(shard)?;
+            std::fs::write(&filename, data)?;
+            println!(">>> Shard {} saved to: {}", i + 1, filename);
+        }
+        println!("--------------------------------------");
+        return Ok(());
+    }
+
     if args.len() < 3 {
         println!("Usage: cargo run -- <SHARD_FILE_PATH> <WALLET_KEYPAIR_PATH>");
+        println!("   or: cargo run -- keygen");
         return Ok(());
     }
     let shard_path = &args[1];
