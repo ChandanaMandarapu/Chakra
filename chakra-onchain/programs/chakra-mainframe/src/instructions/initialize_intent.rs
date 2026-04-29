@@ -70,6 +70,7 @@ pub fn handle_initialize_intent(
 
     emit!(ControlIntent {
         owner: ctx.accounts.user.key(),
+        target_chain_id,
         nonce,
         amount,
         source_chain,
