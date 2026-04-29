@@ -1,5 +1,16 @@
+# CHAKRA ROOT IGNORES
+.anchor/
+.vscode/
+node_modules/
+target/
+*.log
+.DS_Store
 
-# CHAKRA ONCHAIN IGNORES
+# SENSITIVE KEYS
+shard.json
+sentinel-keypair.json
+
+# SUB-PROJECT IGNORES
 chakra-onchain/lib/
 chakra-onchain/out/
 chakra-onchain/cache/
