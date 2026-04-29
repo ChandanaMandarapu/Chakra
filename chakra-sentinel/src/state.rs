@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-#[account]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct EscrowState {
     pub owner: Pubkey,
     pub target_chain_id: u64,
@@ -14,4 +14,12 @@ pub struct EscrowState {
     pub source_chain: [u8; 32],
     pub target_chain: [u8; 32],
     pub target_address: [u8; 64],
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct GlobalConfig {
+    pub admin: Pubkey,
+    pub treasury: Pubkey,
+    pub is_initialized: bool,
+    pub bump: u8,
 }
