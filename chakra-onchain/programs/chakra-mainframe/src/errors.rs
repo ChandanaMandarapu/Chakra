@@ -20,4 +20,6 @@ pub enum ChakraError {
     UnauthorizedSentinel,
     #[msg("Mathematical overflow or underflow occurred.")]
     MathError,
+    #[msg("The provided cryptographic proof is invalid or improperly signed.")]
+    InvalidProof,
 }
