@@ -19,6 +19,20 @@ pub struct InitializeTssConfig<'info> {
 }
 
 #[derive(Accounts)]
+pub struct UpdateTssConfig<'info> {
+    #[account(mut)]
+    pub admin: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [b"tss_config"],
+        bump = tss_config.bump,
+        constraint = tss_config.admin == admin.key()
+    )]
+    pub tss_config: Account<'info, TssConfig>,
+}
+
+#[derive(Accounts)]
 pub struct InitializeConfig<'info> {
     #[account(mut)]
     pub admin: Signer<'info>,
@@ -108,5 +122,18 @@ pub fn handle_remove_sentinel(
     sentinel.is_active = false;
 
     msg!("Sentinel de-authorized: {:?}", sentinel.sentinel_pubkey);
+    Ok(())
+}
+
+pub fn handle_update_tss_config(
+    ctx: Context<UpdateTssConfig>,
+    tss_pubkey: [u8; 64],
+    threshold: u8,
+    total_nodes: u8,
+) -> Result<()> {
+    let tss_config = &mut ctx.accounts.tss_config;
+    tss_config.tss_pubkey = tss_pubkey;
+    tss_config.threshold = threshold;
+    tss_config.total_nodes = total_nodes;
     Ok(())
 }
