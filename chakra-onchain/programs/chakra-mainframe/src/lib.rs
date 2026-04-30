@@ -7,7 +7,7 @@ pub mod instructions;
 
 use crate::instructions::*;
 
-declare_id!("2KAXwKLRTQeSTa21dsread1x7mtCVcNGwy4CUCodMxgx");
+declare_id!("HHTujmzPcqDXUJMTWjcho2EvjD4cPyRHpCTcistPrVZ9");
 
 #[program]
 pub mod chakra_mainframe {
@@ -20,6 +20,15 @@ pub mod chakra_mainframe {
         total_nodes: u8,
     ) -> Result<()> {
         handle_initialize_tss_config(ctx, tss_pubkey, threshold, total_nodes)
+    }
+
+    pub fn update_tss_config(
+        ctx: Context<UpdateTssConfig>,
+        tss_pubkey: [u8; 64],
+        threshold: u8,
+        total_nodes: u8,
+    ) -> Result<()> {
+        handle_update_tss_config(ctx, tss_pubkey, threshold, total_nodes)
     }
 
     pub fn initialize_config(
