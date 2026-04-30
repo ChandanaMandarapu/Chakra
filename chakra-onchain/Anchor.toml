@@ -3,10 +3,10 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-chakra_mainframe = "2KAXwKLRTQeSTa21dsread1x7mtCVcNGwy4CUCodMxgx"
+chakra_mainframe = "HHTujmzPcqDXUJMTWjcho2EvjD4cPyRHpCTcistPrVZ9"
 
 [programs.devnet]
-chakra_mainframe = "2KAXwKLRTQeSTa21dsread1x7mtCVcNGwy4CUCodMxgx"
+chakra_mainframe = "HHTujmzPcqDXUJMTWjcho2EvjD4cPyRHpCTcistPrVZ9"
 
 [registry]
 url = "https://api.apr.dev"
@@ -16,8 +16,7 @@ cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 \"tests/**/*.ts\""
-authorize = "npx ts-node tests/authorize.ts"
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/chakra-mainframe.ts"
 
 [toolchain]
 anchor_version = "0.32.1"
