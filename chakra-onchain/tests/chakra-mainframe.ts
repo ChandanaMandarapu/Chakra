@@ -201,13 +201,20 @@ describe("chakra-mainframe", () => {
     const hash = keccak_256(payload);
 
     // 3. Sign using the STABLE test key
-    const signatureResponse = await secp.sign(hash, STABLE_TEST_PRIV_KEY, { recovered: true });
-    const signature = signatureResponse[0];
-    const recovery = signatureResponse[1];
+    const [sigDer, recoveryId] = await secp.sign(hash, STABLE_TEST_PRIV_KEY, { recovered: true });
     
-    const r = Array.from(signature.slice(0, 32));
-    const s = Array.from(signature.slice(32, 64));
-    const v = recovery + 27;
+    // noble-secp256k1 v1.x returns r and s as BigInts
+    const sig = secp.Signature.fromHex(sigDer);
+    
+    function bigintTo32Bytes(val: bigint): number[] {
+        const hex = val.toString(16).padStart(64, '0');
+        const buffer = Buffer.from(hex, 'hex');
+        return Array.from(buffer);
+    }
+
+    const r = bigintTo32Bytes(sig.r);
+    const s = bigintTo32Bytes(sig.s);
+    const v = recoveryId + 27;
 
     // 4. Submit Proof
     const txHash = new Array(64).fill(0); 
