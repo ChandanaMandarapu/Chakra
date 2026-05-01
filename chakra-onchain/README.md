@@ -31,12 +31,16 @@ sequenceDiagram
 - `programs/chakra-mainframe/src/errors/`: Custom protocol error codes.
 - `programs/chakra-mainframe/src/events/`: Cross-chain intent emission logic.
 
-## 🚀 Milestone 1 Status
+## Current Implementation Status
 
-- [x] **Modular Anchor Foundation**: Implemented with full security checks.
-- [x] **Secure Escrow**: Slot-based timeout and `cancel_intent` logic active.
-- [ ] **Sentinel Listener**: (In Progress)
-- [ ] **TSS Logic**: (Scheduled for Week 3)
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Anchor Program | ✅ Live on Devnet | Program ID: HHTujmzPcqDXUJMTWjcho2EvjD4cPyRHpCTcistPrVZ9 |
+| Escrow + Cancel | ✅ Complete | Slot-based timeout working |
+| secp256k1 Verification | ✅ Complete | On-chain proof verification working |
+| TSS Signing | ⚙️ Shamir SSS | Key reconstructed in memory for POC. True MPC-ECDSA (FROST) is Milestone 2 |
+| Base Sepolia Loop | 🔄 In Progress | ChakraReceiver.sol deployment pending |
+| Sentinel Network | 🔄 In Progress | Multi-process coordination pending |
 
 ## ⚖️ License
 
