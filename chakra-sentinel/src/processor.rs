@@ -18,7 +18,7 @@ use solana_sdk::{
 pub struct IntentProcessor;
 
 const DEVNET_URL: &str = "https://api.devnet.solana.com";
-const PROGRAM_ID: &str = "2KAXwKLRTQeSTa21dsread1x7mtCVcNGwy4CUCodMxgx";
+const PROGRAM_ID: &str = "HHTujmzPcqDXUJMTWjcho2EvjD4cPyRHpCTcistPrVZ9";
 
 impl IntentProcessor {
     pub fn handle_log(log: &str, tx_signature: &str, shard_path: &str, wallet_path: &str) -> Result<()> {
@@ -57,12 +57,11 @@ impl IntentProcessor {
             let shard_data = fs::read_to_string(shard_path)?;
             let shard: KeyShard = serde_json::from_str(&shard_data)?;
 
-            // FOR MILESTONE 1 DEMO: Simulating the second shard for local threshold proof
-            let shard2 = KeyShard {
-                index: 2,
-                value: "9a01875b4fd250af72a7b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
-                    .to_string(),
-            };
+            // TSS Shard Loading Logic
+            let shard2_path = format!("{}_2.json", shard_path.trim_end_matches(".json"));
+            let shard2_data = fs::read_to_string(&shard2_path)
+                .map_err(|e| anyhow!("Cannot find shard2 at {}: {:?}", shard2_path, e))?;
+            let shard2: KeyShard = serde_json::from_str(&shard2_data)?;
 
             // BINARY SIGNING PAYLOAD (Matches on-chain reconstruction)
             let mut msg_data = Vec::with_capacity(8 + 8 + 8 + 64);
