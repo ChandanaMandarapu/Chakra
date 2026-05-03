@@ -5,6 +5,9 @@ import { assert } from "chai";
 import * as secp from "@noble/secp256k1";
 import { keccak_256 } from "@noble/hashes/sha3";
 
+import * as dotenv from "dotenv";
+dotenv.config();
+
 describe("chakra-mainframe", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
@@ -23,8 +26,10 @@ describe("chakra-mainframe", () => {
 
   const mockTreasury = anchor.web3.Keypair.generate();
   
-  // STABLE TEST KEY
-  const STABLE_TEST_PRIV_KEY = Buffer.from("4c08836111000000000000000000000000000000000000000000000000000001", "hex");
+  // STABLE TEST KEY (Loaded from environment)
+  const STABLE_TEST_PRIV_KEY = process.env.TEST_PRIV_KEY 
+    ? Buffer.from(process.env.TEST_PRIV_KEY, "hex")
+    : Buffer.from("4c08836111000000000000000000000000000000000000000000000000000001", "hex");
   const STABLE_TEST_PUB_KEY = secp.getPublicKey(STABLE_TEST_PRIV_KEY, false).slice(1); // 64 bytes
 
   async function waitForSlot(targetSlot: number) {
