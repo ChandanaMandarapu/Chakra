@@ -6,9 +6,12 @@ target/
 *.log
 .DS_Store
 
-# SENSITIVE KEYS
-shard.json
+# SENSITIVE KEYS & SECRETS
+shard*.json
 sentinel-keypair.json
+*.keypair.json
+.env
+.env.local
 
 # SUB-PROJECT IGNORES
 chakra-onchain/lib/
