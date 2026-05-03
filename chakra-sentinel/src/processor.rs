@@ -20,6 +20,16 @@ pub struct IntentProcessor;
 const DEVNET_URL: &str = "https://api.devnet.solana.com";
 const PROGRAM_ID: &str = "HHTujmzPcqDXUJMTWjcho2EvjD4cPyRHpCTcistPrVZ9";
 
+fn compute_discriminator(event_name: &str) -> [u8; 8] {
+    use sha2::{Sha256, Digest};
+    let mut hasher = Sha256::new();
+    hasher.update(format!("event:{}", event_name).as_bytes());
+    let result = hasher.finalize();
+    let mut disc = [0u8; 8];
+    disc.copy_from_slice(&result[..8]);
+    disc
+}
+
 impl IntentProcessor {
     pub fn handle_log(log: &str, tx_signature: &str, shard_path: &str, wallet_path: &str) -> Result<()> {
         if !log.contains("Program data: ") {
@@ -34,8 +44,8 @@ impl IntentProcessor {
                 return Ok(());
             }
 
-            // Anchor Event Discriminator for "event:ControlIntent"
-            let discriminator = [212, 133, 69, 18, 168, 251, 168, 134];
+            // Dynamically compute discriminator for "event:ControlIntent"
+            let discriminator = compute_discriminator("ControlIntent");
             if decoded_data[0..8] != discriminator {
                 return Ok(());
             }
@@ -126,8 +136,12 @@ impl IntentProcessor {
             let sig_bytes = bs58::decode(tx_signature).into_vec()
                 .map_err(|e| anyhow!("Failed to decode signature: {:?}", e))?;
             
+            if sig_bytes.len() != 64 {
+                return Err(anyhow!("Invalid signature length: expected 64, got {}", sig_bytes.len()));
+            }
+
             let mut tx_hash = [0u8; 64];
-            tx_hash.copy_from_slice(&sig_bytes);
+            tx_hash.copy_from_slice(&sig_bytes[..64]);
             instruction_data.extend_from_slice(&tx_hash);
 
             let r_bytes = hex::decode(&tss_signature.r)?;
