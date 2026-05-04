@@ -61,32 +61,64 @@ impl IntentProcessor {
             println!("Target Address: {}", String::from_utf8_lossy(&event.target_address));
             println!("Escrow PDA: {}", event.escrow_pda);
 
-            println!("Proceeding to generate TSS Signature...");
+            // --- MULTI-NODE THRESHOLD SIGNING ---
+            println!("Proceeding to generate TSS Signature via Distributed Network...");
             
-            // Loading the specific shard for this node
-            let shard_data = fs::read_to_string(shard_path)?;
-            let shard: KeyShard = serde_json::from_str(&shard_data)?;
-
-            // TSS Shard Loading Logic
-            let shard2_path = format!("{}_2.json", shard_path.trim_end_matches(".json"));
-            let shard2_data = fs::read_to_string(&shard2_path)
-                .map_err(|e| anyhow!("Cannot find shard2 at {}: {:?}", shard2_path, e))?;
-            let shard2: KeyShard = serde_json::from_str(&shard2_data)?;
-
-            // BINARY SIGNING PAYLOAD (Matches on-chain reconstruction)
+            // 1. Prepare message hash
             let mut msg_data = Vec::with_capacity(8 + 8 + 8 + 64);
             msg_data.extend_from_slice(&event.target_chain_id.to_be_bytes());
             msg_data.extend_from_slice(&event.nonce.to_be_bytes());
             msg_data.extend_from_slice(&event.amount.to_be_bytes());
             msg_data.extend_from_slice(&event.target_address);
             
-            let tss_signature =
-                SignerService::tss_sign_transaction(vec![shard, shard2], &msg_data)?;
+            let mut hasher = sha3::Keccak256::new();
+            hasher.update(&msg_data);
+            let message_hash = hasher.finalize();
 
-            println!("--- TSS SIGNATURE PRODUCED ---");
+            // 2. Sign locally with coordinator shard
+            let shard_data = fs::read_to_string(shard_path)?;
+            let shard: KeyShard = serde_json::from_str(&shard_data)?;
+            let local_sig = SignerService::partial_sign(&shard, &message_hash)?;
+            
+            let mut partial_sigs = vec![local_sig];
+
+            // 3. Request partial signatures from other nodes (simulating distributed network)
+            let node_urls = vec![
+                "http://localhost:3001/sign",
+                "http://localhost:3002/sign",
+                "http://localhost:3003/sign"
+            ];
+
+            let client = reqwest::blocking::Client::new();
+            for url in node_urls {
+                // Skip our own shard if we know the index (for demo)
+                // In production, the coordinator knows which nodes to call
+                let req_payload = serde_json::json!({
+                    "message_hash_hex": hex::encode(message_hash),
+                    "intent_id": event.escrow_pda.to_string()
+                });
+
+                if let Ok(resp) = client.post(url).json(&req_payload).send() {
+                    if let Ok(node_resp) = resp.json::<crate::node_server::SignResponse>() {
+                        if node_resp.node_id as i64 != shard.index {
+                            partial_sigs.push(node_resp.partial_sig);
+                            println!(">>> Received partial signature from Node {}", node_resp.node_id);
+                        }
+                    }
+                }
+                
+                if partial_sigs.len() >= 2 { break; }
+            }
+
+            // 4. Combine signatures (Coordinator never sees the shards)
+            // We use a dummy pubkey for the POC combination logic
+            let tss_pubkey = [0u8; 64]; 
+            let tss_signature = SignerService::combine_signatures(partial_sigs, &message_hash, &tss_pubkey)?;
+
+            println!("--- DISTRIBUTED TSS SIGNATURE PRODUCED ---");
             println!("r: 0x{}", tss_signature.r);
             println!("s: 0x{}", tss_signature.s);
-            println!("------------------------------");
+            println!("------------------------------------------");
 
             // --- AUTONOMOUS ON-CHAIN SUBMISSION ---
             println!("Submitting proof to Solana...");
