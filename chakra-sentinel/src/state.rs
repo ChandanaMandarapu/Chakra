@@ -23,3 +23,12 @@ pub struct GlobalConfig {
     pub is_initialized: bool,
     pub bump: u8,
 }
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct TssConfig {
+    pub tss_pubkey: [u8; 64],
+    pub threshold: u8,
+    pub total_nodes: u8,
+    pub admin: Pubkey,
+    pub bump: u8,
+}

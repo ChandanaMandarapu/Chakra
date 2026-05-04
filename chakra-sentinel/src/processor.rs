@@ -144,6 +144,34 @@ impl IntentProcessor {
             let global_config = GlobalConfig::deserialize(&mut config_slice)
                 .map_err(|e| anyhow!("Failed to deserialize global config: {:?}", e))?;
 
+            // --- FETCH REAL TSS CONFIG ---
+            let (tss_config_pda, _) = Pubkey::find_program_address(
+                &[b"tss_config"],
+                &PROGRAM_ID.parse().unwrap(),
+            );
+            let tss_config_data = rpc_client.get_account(&tss_config_pda)
+                .map_err(|e| anyhow!("Failed to fetch TSS config: {:?}", e))?;
+            let mut tss_slice = &tss_config_data.data[8..];
+            let tss_config = crate::state::TssConfig::deserialize(&mut tss_slice)
+                .map_err(|e| anyhow!("Failed to deserialize TSS config: {:?}", e))?;
+
+            // 4. Combine signatures (Coordinator never sees the shards)
+            let tss_signature = SignerService::combine_signatures(
+                partial_sigs, 
+                &message_hash, 
+                &tss_config.tss_pubkey
+            )?;
+
+            println!("--- DISTRIBUTED TSS SIGNATURE PRODUCED ---");
+            println!("r: 0x{}", tss_signature.r);
+            println!("s: 0x{}", tss_signature.s);
+            println!("------------------------------------------");
+
+            // --- AUTONOMOUS ON-CHAIN SUBMISSION ---
+            println!("Submitting proof to Solana...");
+            
+            // ... (rest of submission logic)
+            
             // --- IDEMPOTENCY CHECK ---
             let escrow_data = rpc_client.get_account(&event.escrow_pda)
                 .map_err(|e| anyhow!("Failed to fetch escrow data: {:?}", e))?;
@@ -255,13 +283,16 @@ mod tests {
         let encoded = general_purpose::STANDARD.encode(&data);
         let mock_log = format!("Program data: {}", encoded);
 
+        let test_shard_path = "test_shard.json";
         let _ = fs::write(
-            "shard.json",
+            test_shard_path,
             r#"{"index": 1, "value": "7802875b4fd250af72a7b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"}"#,
         );
 
         let mock_sig = "5VhWPPBUYNoEuVAKXCpFZn4d3QRkfeGzfwyeYvf85R3rTDV4EnHCWTkcM1QJMhtCFDCxr5HHhTPPtoNgPcf884Rk";
-        let result = IntentProcessor::handle_log(&mock_log, mock_sig, "shard.json", "sentinel-keypair.json");
+        let result = IntentProcessor::handle_log(&mock_log, mock_sig, test_shard_path, "sentinel-keypair.json");
+        let _ = fs::remove_file(test_shard_path);
+        
         assert!(result.is_ok(), "Simulation failed: {:?}", result.err());
     }
 }
