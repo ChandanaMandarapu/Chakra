@@ -8,35 +8,53 @@ async fn main() -> Result<()> {
 
     let args: Vec<String> = std::env::args().collect();
     
-    if args.len() > 1 && args[1] == "keygen" {
-        println!("--- CHAKRA MASTER KEY GENERATION ---");
-        let (master_secret, shards) = chakra_sentinel::signer::SignerService::generate_shards()?;
-        println!(">>> MASTER SECRET (KEEP THIS SAFE!!): {}", master_secret);
-        
-        for (i, shard) in shards.iter().enumerate() {
-            let filename = format!("shard_{}.json", i + 1);
-            let data = serde_json::to_string_pretty(shard)?;
-            std::fs::write(&filename, data)?;
-            println!(">>> Shard {} saved to: {}", i + 1, filename);
+    match args.get(1).map(|s| s.as_str()) {
+        Some("keygen") => {
+            println!("--- CHAKRA MASTER KEY GENERATION ---");
+            let (master, shards) = chakra_sentinel::signer::SignerService::generate_shards()?;
+            println!(">>> MASTER SECRET (KEEP THIS SAFE!!): {}", master);
+            for (i, shard) in shards.iter().enumerate() {
+                let filename = format!("shard_{}.json", i + 1);
+                std::fs::write(&filename, serde_json::to_string_pretty(shard)?)?;
+                println!(">>> Shard {} saved to: {}", i + 1, filename);
+            }
+            println!("--------------------------------------");
         }
-        println!("--------------------------------------");
-        return Ok(());
-    }
 
-    if args.len() < 3 {
-        println!("Usage: cargo run -- <SHARD_FILE_PATH> <WALLET_KEYPAIR_PATH>");
-        println!("   or: cargo run -- keygen");
-        return Ok(());
-    }
-    let shard_path = &args[1];
-    let wallet_path = &args[2];
+        Some("node") => {
+            let shard_path = args.get(2)
+                .expect("Usage: cargo run -- node <shard_file> <port>");
+            let port: u16 = args.get(3)
+                .expect("Usage: cargo run -- node <shard_file> <port>")
+                .parse().expect("Port must be a number");
 
-    println!("--- CHAKRA SENTINEL NODE v0.1.0 ---");
-    println!("Loading shard identity from: {}", shard_path);
-    println!("Loading Solana wallet from: {}", wallet_path);
-    
-    // start the websocket listener with shard and wallet
-    SentinelListener::start_listening(shard_path.to_string(), wallet_path.to_string()).await?;
+            let shard_data = std::fs::read_to_string(shard_path)?;
+            let shard: chakra_sentinel::signer::KeyShard = serde_json::from_str(&shard_data)?;
+            
+            chakra_sentinel::node_server::start_node(shard, port).await;
+        }
+
+        Some("listen") => {
+            let shard_path = args.get(2)
+                .expect("Usage: cargo run -- listen <shard_file> <wallet_file>");
+            let wallet_path = args.get(3)
+                .expect("Usage: cargo run -- listen <shard_file> <wallet_file>");
+
+            println!("--- CHAKRA SENTINEL COORDINATOR ---");
+            SentinelListener::start_listening(
+                shard_path.to_string(), 
+                wallet_path.to_string()
+            ).await?;
+        }
+
+        _ => {
+            println!("CHAKRA SENTINEL CLI v0.1.0");
+            println!("\nUsage:");
+            println!("  cargo run -- keygen");
+            println!("  cargo run -- node <shard_file> <port>");
+            println!("  cargo run -- listen <shard_file> <wallet_file>");
+        }
+    }
 
     Ok(())
 }
