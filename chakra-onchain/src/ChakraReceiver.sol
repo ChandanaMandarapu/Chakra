@@ -45,9 +45,8 @@ contract ChakraReceiver {
             paddedTarget      
         ));
         
-        bytes32 ethSignedMessageHash = messageHash.toEthSignedMessageHash();
-        
-        address signer = ECDSA.recover(ethSignedMessageHash, v, r, s);
+        // Verify the signature against the raw message hash (Matches Sentinel exactly)
+        address signer = ECDSA.recover(messageHash, v, r, s);
         require(signer == protocol_public_key, "Chakra: Invalid TSS signature");
 
         executed[intentId] = true;
