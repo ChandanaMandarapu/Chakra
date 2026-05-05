@@ -110,16 +110,6 @@ impl IntentProcessor {
                 if partial_sigs.len() >= 2 { break; }
             }
 
-            // 4. Combine signatures (Coordinator never sees the shards)
-            // We use a dummy pubkey for the POC combination logic
-            let tss_pubkey = [0u8; 64]; 
-            let tss_signature = SignerService::combine_signatures(partial_sigs, &message_hash, &tss_pubkey)?;
-
-            println!("--- DISTRIBUTED TSS SIGNATURE PRODUCED ---");
-            println!("r: 0x{}", tss_signature.r);
-            println!("s: 0x{}", tss_signature.s);
-            println!("------------------------------------------");
-
             // --- AUTONOMOUS ON-CHAIN SUBMISSION ---
             println!("Submitting proof to Solana...");
             
