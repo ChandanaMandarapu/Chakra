@@ -33,14 +33,13 @@ sequenceDiagram
 
 ## Current Implementation Status
 
-| Component | Status | Notes |
-|-----------|--------|-------|
-| Anchor Program | ✅ Live on Devnet | Program ID: HHTujmzPcqDXUJMTWjcho2EvjD4cPyRHpCTcistPrVZ9 |
-| Escrow + Cancel | ✅ Complete | Slot-based timeout working |
-| secp256k1 Verification | ✅ Complete | On-chain proof verification working |
-| TSS Signing | ⚙️ Shamir SSS | Key reconstructed in memory for POC. True MPC-ECDSA (FROST) is Milestone 2 |
-| Base Sepolia Loop | 🔄 In Progress | ChakraReceiver.sol deployment pending |
-| Sentinel Network | 🔄 In Progress | Multi-process coordination pending |
+| Component | Status | Technical Detail |
+| :--- | :--- | :--- |
+| **Solana Program** | ✅ Live | Escrow, Cancel, and TSS Proof verification active on Devnet. |
+| **TSS Signing** | ⚙️ POC | Shamir SSS with Distributed Partial Combination (2-of-3). |
+| **Sentinel Node** | ✅ Active | Multi-process HTTP network with independent shard signing. |
+| **MPC Upgrade** | 🚀 Planned | Transition to true MPC-ECDSA (FROST) scheduled for Milestone 2. |
+| **Base Loop** | ⏳ Pending | ChakraReceiver deployment and Sentinel-to-Base execution. |
 
 ## ⚖️ License
 
