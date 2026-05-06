@@ -1,7 +1,7 @@
 [package]
 name = "chakra-mainframe"
 version = "0.1.0"
-description = "Created with Anchor"
+description = "CHAKRA Universal Mainframe — Cross-chain execution protocol built on Solana"
 edition = "2021"
 
 [lib]
