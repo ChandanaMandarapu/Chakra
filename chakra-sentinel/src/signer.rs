@@ -61,24 +61,37 @@ impl SignerService {
 
     /// Generate 3 shards using Shamir Secret Sharing (2-of-3 threshold)
     ///
-    /// Math: f(x) = secret + a1*x mod order
-    /// Shard i = f(i) for i in {1, 2, 3}
-    /// Any 2 shards can reconstruct f(0) = secret via Lagrange interpolation
+    /// Mathematical Formulation:
+    /// We define a secret polynomial f(x) of degree 1 (straight line) over the scalar field of secp256k1:
+    ///   f(x) = secret + a1 * x  (mod SECP256K1_ORDER)
+    ///
+    /// where:
+    /// - secret (a0): The master private key to be shared.
+    /// - a1: A random coefficient generated within [1, SECP256K1_ORDER - 1].
+    /// - SECP256K1_ORDER: The prime order of the elliptic curve group.
+    ///
+    /// The three shards are evaluated at integer x-coordinates:
+    /// - Shard 1: f(1) = (secret + a1 * 1) mod order
+    /// - Shard 2: f(2) = (secret + a1 * 2) mod order
+    /// - Shard 3: f(3) = (secret + a1 * 3) mod order
+    ///
+    /// Any 2 of these shards are mathematically sufficient to reconstruct the master private key f(0) = secret.
     ///
     /// Returns: (master_secret_hex, [shard1, shard2, shard3])
     pub fn generate_shards() -> Result<(String, Vec<KeyShard>)> {
         let mut rng = thread_rng();
         let order = Self::get_order();
 
-        // Secret is the master private key
+        // 1. Generate the master secret key randomly in the range [1, order - 1]
         let secret = rng.gen_bigint_range(&BigInt::one(), &order);
-        // Random polynomial coefficient
+        // 2. Generate the random slope coefficient a1 in the range [1, order - 1]
         let a1 = rng.gen_bigint_range(&BigInt::one(), &order);
 
         let mut shards = Vec::new();
+        // 3. Evaluate the polynomial at x = 1, 2, 3
         for i in 1..=3i64 {
             let x = BigInt::from(i);
-            // f(x) = secret + a1*x mod order
+            // Compute f(x) = (secret + (a1 * x)) mod order
             let val = (&secret + (&a1 * &x) % &order) % &order;
             shards.push(KeyShard {
                 index: i,
@@ -116,13 +129,25 @@ impl SignerService {
 
     /// Combine 2 partial signatures using Lagrange interpolation
     ///
-    /// Math (threshold reconstruction at x=0):
-    ///   l1 = x2 / (x2 - x1) mod order  (Lagrange basis for node 1)
-    ///   l2 = x1 / (x1 - x2) mod order  (Lagrange basis for node 2)
-    ///   combined_s = l1*s1 + l2*s2 mod order
+    /// Lagrange Interpolation Math (reconstruction at x=0):
+    ///   f(0) = sum_{i} (y_i * l_i(0)) mod order
     ///
-    /// This reconstructs the master signature s without ever
-    /// reconstructing the master private key in memory.
+    /// For two active nodes at coordinates x1 and x2:
+    ///   l1(0) = x2 / (x2 - x1) mod order
+    ///   l2(0) = x1 / (x1 - x2) mod order
+    ///
+    /// Modular division is computed by multiplying by the modular multiplicative inverse:
+    ///   l1(0) = x2 * (x2 - x1)^(-1) mod order
+    ///   l2(0) = x1 * (x1 - x2)^(-1) mod order
+    ///
+    /// Multiplicative inverse modulo a prime p is found using Fermat's Little Theorem:
+    ///   a^(p-1) = 1 mod p  =>  a^(-1) = a^(p-2) mod p
+    ///
+    /// The combined s value is:
+    ///   combined_s = (l1 * s1 + l2 * s2) mod order
+    ///
+    /// This reconstructs the signature s under the master key without ever compiling
+    /// the master private key in memory.
     pub fn combine_signatures(
         partial_sigs: Vec<PartialSignature>,
         message_hash: &[u8],
@@ -159,21 +184,21 @@ impl SignerService {
         let s2 = BigInt::parse_bytes(sig2.s.as_bytes(), 16)
             .ok_or_else(|| anyhow::anyhow!("Invalid s2 hex"))?;
 
-        // Lagrange basis polynomials evaluated at x=0
-        // l1 = x2 * modular_inverse(x2 - x1) mod order
+        // 1. Calculate polynomial denominators (x2 - x1) and (x1 - x2) mod order
         let x2_minus_x1 = ((&x2 - &x1) % &order + &order) % &order;
         let x1_minus_x2 = ((&x1 - &x2) % &order + &order) % &order;
 
-        // Modular inverse via Fermat's little theorem: a^(p-2) mod p
+        // 2. Compute modular inverse via Fermat's Little Theorem: a^(order - 2) mod order
         let inv_x2_minus_x1 = x2_minus_x1
             .modpow(&(&order - BigInt::from(2u32)), &order);
         let inv_x1_minus_x2 = x1_minus_x2
             .modpow(&(&order - BigInt::from(2u32)), &order);
 
+        // 3. Compute Lagrange coefficients l1 and l2 evaluated at x = 0
         let l1 = (&x2 * &inv_x2_minus_x1) % &order;
         let l2 = (&x1 * &inv_x1_minus_x2) % &order;
 
-        // Combined s = l1*s1 + l2*s2 mod order
+        // 4. Combine partial s-values: combined_s = (l1 * s1 + l2 * s2) mod order
         let combined_s = ((&l1 * &s1) % &order + (&l2 * &s2) % &order) % &order;
         let combined_s_hex = format!("{:0>64x}", combined_s);
 
@@ -191,8 +216,8 @@ impl SignerService {
 
     /// Legacy single-process TSS signing (kept for local testing)
     ///
-    /// Used in unit tests where all shards are available locally.
-    /// Production uses the distributed combine_signatures above.
+    /// Reconstructs the master private key in memory using Lagrange interpolation,
+    /// then signs the message hash. This is used in local simulation/test scripts.
     pub fn tss_sign_transaction(
         shards: Vec<KeyShard>,
         message: &[u8],
@@ -207,7 +232,7 @@ impl SignerService {
         let y1 = BigInt::parse_bytes(shards[0].value.as_bytes(), 16).unwrap();
         let y2 = BigInt::parse_bytes(shards[1].value.as_bytes(), 16).unwrap();
 
-        // Lagrange interpolation to recover secret at x=0
+        // 1. Calculate Lagrange basis polynomials evaluated at x=0
         let x2_minus_x1 = ((&x2 - &x1) % &order + &order) % &order;
         let x1_minus_x2 = ((&x1 - &x2) % &order + &order) % &order;
         let delta1 = x2_minus_x1.modpow(&(&order - BigInt::from(2u32)), &order);
@@ -215,7 +240,7 @@ impl SignerService {
         let delta2 = x1_minus_x2.modpow(&(&order - BigInt::from(2u32)), &order);
         let l2 = (&x1 * &delta2) % &order;
 
-        // Reconstruct secret
+        // 2. Reconstruct the master private key: secret = (y1 * l1 + y2 * l2) mod order
         let secret_bi = ((&y1 * &l1) % &order + (&y2 * &l2) % &order) % &order;
         let secret_hex = format!("{:0>64x}", secret_bi);
         let secret_bytes = hex::decode(secret_hex)?;
@@ -223,7 +248,7 @@ impl SignerService {
         key_array.copy_from_slice(&secret_bytes);
         let secret_key = SecretKey::parse(&key_array)?;
 
-        // Hash and sign
+        // 3. Hash message via Keccak256 and sign it using recovered key
         let mut hasher = Keccak256::new();
         hasher.update(message);
         let hash = hasher.finalize();
