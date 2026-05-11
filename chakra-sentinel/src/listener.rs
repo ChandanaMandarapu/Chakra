@@ -27,6 +27,8 @@ impl SentinelListener {
     pub async fn start_listening(shard_path: String, wallet_path: String) -> Result<()> {
         println!("Sentinel monitoring CHAKRA program: {}", PROGRAM_ID);
 
+        // 1. Establish a WebSocket subscription to the Solana PubSub RPC endpoint.
+        // We filter for transaction logs mentioning our program ID and request "confirmed" commitment level.
         let (_subscription, receiver) = PubsubClient::logs_subscribe(
             DEVNET_WSS,
             RpcTransactionLogsFilter::Mentions(vec![PROGRAM_ID.to_string()]),
@@ -35,10 +37,14 @@ impl SentinelListener {
             },
         ).map_err(|e| anyhow::anyhow!("Failed to subscribe: {:?}", e))?;
 
+        // 2. Poll the WebSocket logs stream as transactions are confirmed.
         while let Ok(response) = receiver.recv() {
             let signature = response.value.signature.clone();
+            
+            // 3. Scan the logs array of each transaction for program events or instructions.
             for log in response.value.logs {
                 if log.contains("Program data:") || log.contains("Instruction:") {
+                    // 4. Pass the matching log line to the IntentProcessor for parsing and signature coordination.
                     if let Err(e) = crate::processor::IntentProcessor::handle_log(&log, &signature, &shard_path, &wallet_path) {
                         eprintln!("Error processing intent: {:?}", e);
                     }
