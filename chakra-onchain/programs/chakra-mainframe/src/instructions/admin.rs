@@ -19,6 +19,7 @@ pub struct InitializeTssConfig<'info> {
 }
 
 #[derive(Accounts)]
+/// Context required to update the Threshold Signature Scheme configuration.
 pub struct UpdateTssConfig<'info> {
     #[account(mut)]
     pub admin: Signer<'info>,
@@ -27,6 +28,7 @@ pub struct UpdateTssConfig<'info> {
         mut,
         seeds = [b"tss_config"],
         bump = tss_config.bump,
+        // Enforce that the admin signing this transaction is the registered admin in TssConfig.
         constraint = tss_config.admin == admin.key()
     )]
     pub tss_config: Account<'info, TssConfig>,
@@ -51,6 +53,7 @@ pub struct InitializeConfig<'info> {
 
 #[derive(Accounts)]
 #[instruction(sentinel_pubkey: Pubkey)]
+/// Context required to register or de-register sentinel validators.
 pub struct ManageSentinel<'info> {
     #[account(mut)]
     pub admin: Signer<'info>,
@@ -58,6 +61,7 @@ pub struct ManageSentinel<'info> {
     #[account(
         seeds = [b"config"],
         bump = config.bump,
+        // Enforce that only the global program administrator can add or remove sentinel nodes.
         constraint = config.admin == admin.key()
     )]
     pub config: Account<'info, GlobalConfig>,
