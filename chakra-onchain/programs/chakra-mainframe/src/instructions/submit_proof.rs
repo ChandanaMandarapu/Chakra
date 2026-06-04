@@ -72,19 +72,25 @@ pub fn handle_submit_proof(
     msg_data.extend_from_slice(&escrow.amount.to_be_bytes());
     msg_data.extend_from_slice(&escrow.target_address);
 
+    // 1. Hash the formatted message using Keccak256 (matches EVM format).
     let msg_hash = keccak256(&msg_data).to_bytes();
 
+    // 2. Concatenate signature r and s components into a single 64-byte signature array.
     let mut sig_bytes = [0u8; 64];
     sig_bytes[0..32].copy_from_slice(&signature_r);
     sig_bytes[32..64].copy_from_slice(&signature_s);
 
+    // 3. Convert Ethereum-style v value (27 or 28) to standard recovery ID (0 or 1).
     let recovery_id = signature_v
         .checked_sub(27)
         .ok_or(ChakraError::InvalidProof)?;
 
+    // 4. Recover the uncompressed 64-byte public key of the signer using Solana's native syscall.
     let recovered_pubkey = secp256k1_recover(&msg_hash, recovery_id, &sig_bytes)
         .map_err(|_| ChakraError::InvalidProof)?;
 
+    // 5. Compare the recovered public key against the registered TSS public key.
+    // If they do not match, the proof is invalid.
     require!(
         recovered_pubkey.to_bytes() == tss_config.tss_pubkey,
         ChakraError::InvalidProof
