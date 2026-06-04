@@ -6,6 +6,7 @@ use crate::events::*;
 
 #[derive(Accounts)]
 #[instruction(target_chain_id: u64, nonce: u64)]
+/// Context for initializing a cross-chain execution intent.
 pub struct InitializeIntent<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
@@ -14,6 +15,11 @@ pub struct InitializeIntent<'info> {
         init,
         payer = user,
         space = EscrowState::LEN,
+        // The PDA is seeded with "escrow", the user's public key, the target chain ID, and a unique nonce.
+        // This ensures:
+        // 1. One user can have multiple concurrent cross-chain intents by incrementing the nonce.
+        // 2. No two users can initialize the same intent.
+        // 3. The PDA acts as a secure custody vault owned by the program to hold locked tokens.
         seeds = [b"escrow", user.key().as_ref(), &target_chain_id.to_le_bytes(), &nonce.to_le_bytes()],
         bump
     )]
