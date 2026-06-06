@@ -32,24 +32,29 @@ fn compute_discriminator(event_name: &str) -> [u8; 8] {
 
 impl IntentProcessor {
     pub fn handle_log(log: &str, tx_signature: &str, shard_path: &str, wallet_path: &str) -> Result<()> {
+        // 1. Check if the log contains program data. If not, it's not a program event log.
         if !log.contains("Program data: ") {
             return Ok(());
         }
 
         if let Some(data_start) = log.find("Program data: ") {
             let encoded_data = &log[data_start + 14..];
+            
+            // 2. Decode the Base64 program event data emitted by the Solana program.
             let decoded_data = general_purpose::STANDARD.decode(encoded_data.trim())?;
 
             if decoded_data.len() < 8 {
                 return Ok(());
             }
 
-            // Dynamically compute discriminator for "event:ControlIntent"
+            // 3. Verify the event discriminator.
+            // Solana Anchor events are prefixed with a 8-byte discriminator representing the event name.
             let discriminator = compute_discriminator("ControlIntent");
             if decoded_data[0..8] != discriminator {
                 return Ok(());
             }
 
+            // 4. Deserialize the remaining bytes into the ControlIntentEvent struct.
             let mut data_ptr = &decoded_data[8..];
             let event = ControlIntentEvent::deserialize(&mut data_ptr)
                 .map_err(|e| anyhow!("Failed to deserialize event: {:?}", e))?;
@@ -64,7 +69,9 @@ impl IntentProcessor {
             // --- MULTI-NODE THRESHOLD SIGNING ---
             println!("Proceeding to generate TSS Signature via Distributed Network...");
             
-            // 1. Prepare message hash
+            // 5. Build the message hash to be signed.
+            // The message layout must match exactly between Solana on-chain logic, the Sentinel, and EVM receiver:
+            //   hash(chain_id + nonce + amount + target_address)
             let mut msg_data = Vec::with_capacity(8 + 8 + 8 + 64);
             msg_data.extend_from_slice(&event.target_chain_id.to_be_bytes());
             msg_data.extend_from_slice(&event.nonce.to_be_bytes());
@@ -75,14 +82,15 @@ impl IntentProcessor {
             hasher.update(&msg_data);
             let message_hash = hasher.finalize();
 
-            // 2. Sign locally with coordinator shard
+            // 6. Sign locally with the coordinator's own key shard.
             let shard_data = fs::read_to_string(shard_path)?;
             let shard: KeyShard = serde_json::from_str(&shard_data)?;
             let local_sig = SignerService::partial_sign(&shard, &message_hash)?;
             
             let mut partial_sigs = vec![local_sig];
 
-            // 3. Request partial signatures from other nodes (simulating distributed network)
+            // 7. Coordinate with other Sentinel Nodes via HTTP requests to compile signature shares.
+            // We need 2 out of 3 total nodes to sign the intent.
             let node_urls = vec![
                 "http://localhost:3001/sign",
                 "http://localhost:3002/sign",
@@ -91,8 +99,8 @@ impl IntentProcessor {
 
             let client = reqwest::blocking::Client::new();
             for url in node_urls {
-                // Skip our own shard if we know the index (for demo)
-                // In production, the coordinator knows which nodes to call
+                // In this local simulation / testnet phase, the coordinator calls other local ports.
+                // It sends the message hash and the Solana intent ID (escrow PDA address).
                 let req_payload = serde_json::json!({
                     "message_hash_hex": hex::encode(message_hash),
                     "intent_id": event.escrow_pda.to_string()
@@ -107,6 +115,7 @@ impl IntentProcessor {
                     }
                 }
                 
+                // Break early once we've met our threshold of 2 signatures (local + 1 remote node).
                 if partial_sigs.len() >= 2 { break; }
             }
 
