@@ -9,6 +9,8 @@ use crate::instructions::*;
 
 declare_id!("HHTujmzPcqDXUJMTWjcho2EvjD4cPyRHpCTcistPrVZ9");
 
+/// CHAKRA Mainframe smart contract module coordinating cross-chain execution intents,
+/// escrow vaults, and multi-node threshold signature verification on Solana.
 #[program]
 pub mod chakra_mainframe {
     use super::*;
