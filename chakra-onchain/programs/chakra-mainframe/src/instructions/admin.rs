@@ -102,6 +102,9 @@ pub fn handle_initialize_config(
     config.treasury = treasury;
     config.is_initialized = true;
     config.bump = ctx.bumps.config;
+
+    msg!("Global config initialized. Admin: {:?}, Treasury: {:?}", config.admin, treasury);
+
     Ok(())
 }
 
