@@ -10,7 +10,7 @@ async function authorize() {
 
   const program = anchor.workspace.ChakraMainframe as Program<ChakraMainframe>;
 
-  // YOUR NEW SENTINEL ADDRESS
+  // YOUR NEW SENTINEL ADDRESS (Must be registered as an active validator in global state)
   const sentinelAddress = new anchor.web3.PublicKey("2DfLLCW9D5MWSezabF6qok5uDHsBZjkwSAVXUKyPREPy");
 
   console.log("Authorizing Sentinel:", sentinelAddress.toString());
