@@ -39,5 +39,7 @@ pub fn handle_cancel_intent(ctx: Context<CancelIntent>) -> Result<()> {
     require!(!escrow.is_finalized, ChakraError::AlreadyFinalized);
     require!(!escrow.is_cancelled, ChakraError::AlreadyCancelled);
 
+    msg!("Cancelling intent. Refunding {} lamports to user: {:?}", escrow.amount, escrow.owner);
+
     Ok(())
 }
