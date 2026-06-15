@@ -74,6 +74,8 @@ pub fn handle_initialize_intent(
 
     transfer(cpi_context, amount)?;
 
+    msg!("Locked {} lamports in Escrow PDA: {:?}", amount, escrow_key);
+
     emit!(ControlIntent {
         owner: ctx.accounts.user.key(),
         target_chain_id,
