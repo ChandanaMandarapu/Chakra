@@ -96,6 +96,8 @@ pub fn handle_submit_proof(
         ChakraError::InvalidProof
     );
 
+    msg!("TSS Signature verified successfully on-chain!");
+
     escrow.is_finalized = true;
 
     emit!(IntentFinalized {
