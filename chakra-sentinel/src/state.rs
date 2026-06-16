@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+/// Mirrors the on-chain EscrowState layout to parse Solana transactions on the sentinel side.
 pub struct EscrowState {
     pub owner: Pubkey,
     pub target_chain_id: u64,
