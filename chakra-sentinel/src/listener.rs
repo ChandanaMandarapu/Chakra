@@ -37,6 +37,8 @@ impl SentinelListener {
             },
         ).map_err(|e| anyhow::anyhow!("Failed to subscribe: {:?}", e))?;
 
+        println!("WebSocket log subscription registered successfully on {}", DEVNET_WSS);
+
         // 2. Poll the WebSocket logs stream as transactions are confirmed.
         while let Ok(response) = receiver.recv() {
             let signature = response.value.signature.clone();
