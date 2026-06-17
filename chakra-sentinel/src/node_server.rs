@@ -65,7 +65,7 @@ pub async fn start_node(shard: KeyShard, port: u16) {
     // 3. Bind to the local interface and run the HTTP server.
     let addr = format!("0.0.0.0:{}", port);
     println!("--- CHAKRA SENTINEL NODE {} ---", shard.index);
-    println!("Listening on: http://{}", addr);
+    println!("Listening on: http://{} (port: {})", addr, port);
     
     let listener = tokio::net::TcpListener::bind(&addr)
         .await.unwrap();
