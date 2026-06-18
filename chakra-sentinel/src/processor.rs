@@ -43,6 +43,8 @@ impl IntentProcessor {
             // 2. Decode the Base64 program event data emitted by the Solana program.
             let decoded_data = general_purpose::STANDARD.decode(encoded_data.trim())?;
 
+            println!("Decoding base64 program event data of length: {}", decoded_data.len());
+
             if decoded_data.len() < 8 {
                 return Ok(());
             }
