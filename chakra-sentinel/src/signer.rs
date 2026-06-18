@@ -119,6 +119,8 @@ impl SignerService {
         let (signature, recovery_id) = sign(&message_obj, &secret_key);
         let sig_bytes = signature.serialize();
 
+        println!("Node {} created partial signature for hash 0x{}", shard.index, &hex::encode(message_hash)[..16]);
+
         Ok(PartialSignature {
             node_index: shard.index,
             r: hex::encode(&sig_bytes[0..32]),
