@@ -14,6 +14,7 @@ export default function App() {
   const progressRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Initialize Lenis smooth scroll and connect with GSAP ScrollTrigger timeline animations
     /* ── LENIS ── */
     const lenis = new Lenis({
       duration: 1.4,
