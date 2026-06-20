@@ -3,6 +3,7 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { Stars } from '@react-three/drei';
 import * as THREE from 'three';
 
+// The Mandala component renders a 3D sacred-geometry visual representation of the multi-chain mainframe.
 const Mandala = () => {
   const masterRef = useRef<THREE.Group>(null);
   const ring1Ref  = useRef<THREE.Group>(null);
