@@ -3,7 +3,7 @@ use crate::state::*;
 
 #[derive(Accounts)]
 pub struct InitializeTssConfig<'info> {
-    #[account(mut)]
+    #[account(mut, constraint = admin.key() == program_data.upgrade_authority_address.unwrap_or_default() @ ChakraError::Unauthorized)]
     pub admin: Signer<'info>,
 
     #[account(
@@ -14,6 +14,10 @@ pub struct InitializeTssConfig<'info> {
         bump
     )]
     pub tss_config: Account<'info, TssConfig>,
+
+    #[account(constraint = program.programdata_address()? == Some(program_data.key()) @ ChakraError::Unauthorized)]
+    pub program: Program<'info, crate::program::ChakraMainframe>,
+    pub program_data: Account<'info, ProgramData>,
 
     pub system_program: Program<'info, System>,
 }
@@ -36,7 +40,7 @@ pub struct UpdateTssConfig<'info> {
 
 #[derive(Accounts)]
 pub struct InitializeConfig<'info> {
-    #[account(mut)]
+    #[account(mut, constraint = admin.key() == program_data.upgrade_authority_address.unwrap_or_default() @ ChakraError::Unauthorized)]
     pub admin: Signer<'info>,
 
     #[account(
@@ -47,6 +51,10 @@ pub struct InitializeConfig<'info> {
         bump
     )]
     pub config: Account<'info, GlobalConfig>,
+
+    #[account(constraint = program.programdata_address()? == Some(program_data.key()) @ ChakraError::Unauthorized)]
+    pub program: Program<'info, crate::program::ChakraMainframe>,
+    pub program_data: Account<'info, ProgramData>,
 
     pub system_program: Program<'info, System>,
 }
