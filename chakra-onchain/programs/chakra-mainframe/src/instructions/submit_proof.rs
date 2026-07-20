@@ -66,7 +66,9 @@ pub fn handle_submit_proof(
     require!(!escrow.is_cancelled, ChakraError::AlreadyCancelled);
     require!(clock.slot <= escrow.timeout_slot, ChakraError::TimeoutReached);
 
-    let mut msg_data = Vec::with_capacity(8 + 8 + 8 + 64);
+    let mut msg_data = Vec::with_capacity(32 + 32 + 8 + 8 + 8 + 64);
+    msg_data.extend_from_slice(&escrow.source_chain);
+    msg_data.extend_from_slice(ctx.accounts.escrow_account.key().as_ref());
     msg_data.extend_from_slice(&escrow.target_chain_id.to_be_bytes());
     msg_data.extend_from_slice(&escrow.nonce.to_be_bytes());
     msg_data.extend_from_slice(&escrow.amount.to_be_bytes());
@@ -80,10 +82,15 @@ pub fn handle_submit_proof(
     sig_bytes[0..32].copy_from_slice(&signature_r);
     sig_bytes[32..64].copy_from_slice(&signature_s);
 
-    // 3. Convert Ethereum-style v value (27 or 28) to standard recovery ID (0 or 1).
-    let recovery_id = signature_v
-        .checked_sub(27)
-        .ok_or(ChakraError::InvalidProof)?;
+    // 3. Robust secp256k1 Recovery ID logic (handles EIP-155, Legacy, and Standard)
+    let recovery_id = if signature_v >= 35 {
+        (signature_v - 35) % 2
+    } else if signature_v >= 27 {
+        signature_v - 27
+    } else {
+        signature_v
+    };
+    require!(recovery_id <= 1, ChakraError::InvalidProof);
 
     // 4. Recover the uncompressed 64-byte public key of the signer using Solana's native syscall.
     let recovered_pubkey = secp256k1_recover(&msg_hash, recovery_id, &sig_bytes)
