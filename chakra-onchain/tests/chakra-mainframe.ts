@@ -46,6 +46,12 @@ describe("chakra-mainframe", () => {
     return Array.from(buffer);
   }
 
+  const BPF_UPGRADE_LOADER_ID = new anchor.web3.PublicKey("BPFLoaderUpgradeab1e11111111111111111111111");
+  const [programDataPda] = anchor.web3.PublicKey.findProgramAddressSync(
+    [program.programId.toBuffer()],
+    BPF_UPGRADE_LOADER_ID
+  );
+
   it("initializes global protocol configuration", async () => {
     try {
         await program.methods
@@ -53,12 +59,14 @@ describe("chakra-mainframe", () => {
           .accounts({
             admin: provider.wallet.publicKey,
             config: globalConfigPda,
+            program: program.programId,
+            programData: programDataPda,
             systemProgram: anchor.web3.SystemProgram.programId,
           } as any)
           .rpc();
         console.log("✅ SUCCESS: Global Protocol Config initialized.");
     } catch (e) {
-        console.log("ℹ️ INFO: Global Protocol Config already initialized.");
+        console.log("ℹ️ INFO: Global Protocol Config already initialized. " + e);
     }
 
     const config = await program.account.globalConfig.fetch(globalConfigPda);
@@ -77,6 +85,8 @@ describe("chakra-mainframe", () => {
           .accounts({
             admin: provider.wallet.publicKey,
             tssConfig: tssConfigPda,
+            program: program.programId,
+            programData: programDataPda,
             systemProgram: anchor.web3.SystemProgram.programId,
           } as any)
           .rpc();
@@ -196,8 +206,10 @@ describe("chakra-mainframe", () => {
       } as any)
       .rpc();
 
-    // 2. Construct signing payload (Big Endian)
+    // 2. Construct signing payload (matching the new domain-separated hash)
     const payload = Buffer.concat([
+        Buffer.from(stringToBytes("solana", 32)), // source_chain
+        escrowPda.toBuffer(),                     // escrow_pda
         TARGET_CHAIN_ID.toArrayLike(Buffer, "be", 8),
         NONCE.toArrayLike(Buffer, "be", 8),
         AMOUNT.toArrayLike(Buffer, "be", 8),
