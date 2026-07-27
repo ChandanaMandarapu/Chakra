@@ -5,6 +5,7 @@ use crate::listener::ControlIntentEvent;
 use crate::signer::{SignerService, KeyShard};
 use crate::state::{EscrowState, GlobalConfig};
 use std::fs;
+use sha3::Digest;
 use solana_sdk::pubkey::Pubkey;
 
 use solana_client::rpc_client::RpcClient;
@@ -73,8 +74,10 @@ impl IntentProcessor {
             
             // 5. Build the message hash to be signed.
             // The message layout must match exactly between Solana on-chain logic, the Sentinel, and EVM receiver:
-            //   hash(chain_id + nonce + amount + target_address)
-            let mut msg_data = Vec::with_capacity(8 + 8 + 8 + 64);
+            //   hash(source_chain + escrow_pda + chain_id + nonce + amount + target_address)
+            let mut msg_data = Vec::with_capacity(32 + 32 + 8 + 8 + 8 + 64);
+            msg_data.extend_from_slice(&event.source_chain);
+            msg_data.extend_from_slice(event.escrow_pda.as_ref());
             msg_data.extend_from_slice(&event.target_chain_id.to_be_bytes());
             msg_data.extend_from_slice(&event.nonce.to_be_bytes());
             msg_data.extend_from_slice(&event.amount.to_be_bytes());
@@ -89,6 +92,12 @@ impl IntentProcessor {
             let shard: KeyShard = serde_json::from_str(&shard_data)?;
             let local_sig = SignerService::partial_sign(&shard, &message_hash)?;
             
+            let leader_index = (event.nonce % 3) as i64 + 1;
+            if shard.index != leader_index {
+                println!("Node {} is not the leader for Intent {}. Will sign passively, but skipping coordination.", shard.index, event.escrow_pda);
+                return Ok(());
+            }
+
             let mut partial_sigs = vec![local_sig];
 
             // 7. Coordinate with other Sentinel Nodes via HTTP requests to compile signature shares.
