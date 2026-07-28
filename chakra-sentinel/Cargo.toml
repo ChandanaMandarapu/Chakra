@@ -29,3 +29,4 @@ sha2 = "0.10"
 libsecp256k1 = "0.6.0"
 axum = "0.7"
 reqwest = { version = "0.11", features = ["json"] }
+thiserror = "2.0.19"
