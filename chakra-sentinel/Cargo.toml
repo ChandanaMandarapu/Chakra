@@ -30,3 +30,9 @@ libsecp256k1 = "0.6.0"
 axum = "0.7"
 reqwest = { version = "0.11", features = ["json"] }
 thiserror = "2.0.19"
+
+# FROST MPC — True Distributed Key Generation and Threshold Signing
+# Zero key reconstruction: private key never exists in a single location
+frost-secp256k1 = "2.1.0"
+k256 = { version = "0.13", features = ["ecdsa", "arithmetic"] }
+zeroize = { version = "1.7", features = ["derive"] }
