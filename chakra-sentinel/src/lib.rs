@@ -4,6 +4,7 @@ pub mod signer;
 pub mod state;
 pub mod node_server;
 pub mod errors;
+pub mod frost;
 
 pub use listener::*;
 pub use processor::*;
