@@ -22,7 +22,7 @@ pub struct SignRequest {
     pub intent_id: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct SignResponse {
     pub partial_sig: PartialSignature,
     pub node_id: u8,
@@ -53,8 +53,8 @@ pub async fn sign_handler(
 pub async fn start_node(shard: KeyShard, port: u16) {
     // 1. Initialize local node state containing the private key shard.
     let state = Arc::new(NodeState {
-        shard,
         node_id: shard.index as u8,
+        shard: shard.clone(),
     });
 
     // 2. Configure Axum Router mapping POST /sign request to the sign_handler.
