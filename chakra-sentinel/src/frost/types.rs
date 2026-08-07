@@ -8,7 +8,6 @@
 /// to ensure secret bytes are wiped from memory when dropped.
 
 use serde::{Deserialize, Serialize};
-use zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// The domain separation context string for CHAKRA's FROST signing sessions.
 /// This ensures CHAKRA signatures are cryptographically distinct from any
@@ -26,7 +25,8 @@ pub const CHAKRA_FROST_CONTEXT: &str = "CHAKRA-PROTOCOL-FROST-SECP256K1-v1";
 ///
 /// The master private key can NEVER be reconstructed from a single shard.
 /// At least 2 of 3 nodes must cooperate to produce any valid signature.
-#[derive(Debug, Clone, Serialize, Deserialize, Zeroize, ZeroizeOnDrop)]
+/// SECURITY: Treat this struct as a secret. Never log, transmit, or persist unencrypted.
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FrostKeyShare {
     /// The 1-indexed identifier of this node in the signing group (1, 2, or 3).
     pub identifier: u16,
@@ -73,7 +73,8 @@ pub struct FrostSigningCommitment {
 
 /// Round 2 signing output: a node's partial signature share.
 /// Produced by signing the message with the node's key share and nonces.
-#[derive(Debug, Clone, Serialize, Deserialize, Zeroize, ZeroizeOnDrop)]
+/// SECURITY: Treat this struct as a secret. Clear from memory after aggregation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FrostSignatureShare {
     /// The 1-indexed identifier of the node that produced this share.
     pub identifier: u16,
