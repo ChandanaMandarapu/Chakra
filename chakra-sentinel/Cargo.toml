@@ -32,7 +32,7 @@ reqwest = { version = "0.11", features = ["json"] }
 thiserror = "2.0.19"
 
 # FROST MPC — True Distributed Key Generation and Threshold Signing
-# Zero key reconstruction: private key never exists in a single location
-frost-secp256k1 = "2.1.0"
-k256 = { version = "0.13", features = ["ecdsa", "arithmetic"] }
-zeroize = { version = "1.7", features = ["derive"] }
+# Implemented manually on top of libsecp256k1 to avoid zeroize version conflicts
+# with solana-program v1.18.26 (which pins curve25519-dalek → zeroize < 1.4)
+# frost-secp256k1 v2.x requires zeroize >= 1.5.4 — irreconcilable conflict.
+# Manual implementation gives us full control and is more auditable.
