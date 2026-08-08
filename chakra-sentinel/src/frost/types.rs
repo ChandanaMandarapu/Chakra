@@ -4,8 +4,8 @@
 /// These types are passed between sentinel nodes over HTTP
 /// and are designed to be serialized/deserialized safely.
 ///
-/// SECURITY: All types containing secret material implement `Zeroize`
-/// to ensure secret bytes are wiped from memory when dropped.
+/// SECURITY: Structs containing secret key material must never be logged,
+/// transmitted unencrypted, or persisted to disk.
 
 use serde::{Deserialize, Serialize};
 
@@ -69,6 +69,37 @@ pub struct FrostSigningCommitment {
     pub hiding_commitment_hex: String,
     /// Binding nonce commitment — serialized as hex.
     pub binding_commitment_hex: String,
+}
+
+/// PUBLIC — The output of DKG Round 1 broadcast to all other nodes.
+/// Contains the node's polynomial commitments (public curve points).
+/// Safe to transmit over the network.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DkgRound1PublicPackage {
+    /// The 1-indexed identifier of the node that produced this package.
+    pub node_index: u16,
+    /// Commitments to each polynomial coefficient: [a0*G, a1*G, ...].
+    /// Serialized as 66-char hex strings (compressed secp256k1 points).
+    /// Other nodes use these to verify the secret shares they receive in Round 2.
+    pub commitments: Vec<String>,
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DKG ROUND 2 TYPES
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// SECRET SHARE — Sent securely from Node sender_index to Node receiver_index.
+/// Represents evaluation of sender's polynomial at receiver's index: f_{sender}(receiver).
+///
+/// MUST be sent over an encrypted channel (or encrypted with receiver's public key).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DkgRound2SharePackage {
+    /// The node that generated this polynomial share.
+    pub sender_index: u16,
+    /// The target node index that this share is evaluated for.
+    pub receiver_index: u16,
+    /// Secret polynomial evaluation f_{sender}(receiver) as 64-char hex string.
+    pub secret_share_hex: String,
 }
 
 /// Round 2 signing output: a node's partial signature share.
