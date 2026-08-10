@@ -56,6 +56,20 @@ pub struct FrostGroupPublicKey {
     pub eth_address: String,
 }
 
+/// SECRET — Round 1 signing secret package held privately by one node.
+/// Contains the node's secret nonces (hiding scalar d_i and binding scalar e_i).
+///
+/// MUST NEVER be logged or transmitted over the network.
+#[derive(Debug, Clone)]
+pub struct FrostSigningSecretPackage {
+    /// The 1-indexed identifier of the node.
+    pub identifier: u16,
+    /// Secret hiding nonce d_i (64-char hex scalar).
+    pub hiding_nonce_hex: String,
+    /// Secret binding nonce e_i (64-char hex scalar).
+    pub binding_nonce_hex: String,
+}
+
 /// Round 1 signing output: a node's commitment to its signing nonces.
 /// SAFE to broadcast publicly to all other nodes before signing begins.
 ///
